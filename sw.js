@@ -1,5 +1,5 @@
 /* Héctor Tu Entrenador Personal · service worker: guarda la app para abrirla sin conexión */
-const CACHE = 'hector-entrenador-v3';
+const CACHE = 'hector-entrenador-v4';
 const SHELL = [
   './',
   './index.html',
