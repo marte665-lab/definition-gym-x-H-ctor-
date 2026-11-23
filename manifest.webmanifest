@@ -1,7 +1,7 @@
 {
-  "name": "Definition Gym X",
-  "short_name": "Definition X",
-  "description": "Tu plataforma de gestión fitness",
+  "name": "Héctor Tu Entrenador Personal",
+  "short_name": "Héctor",
+  "description": "Gestión de clientes de entrenamiento personal",
   "lang": "es",
   "id": "./",
   "start_url": "./",

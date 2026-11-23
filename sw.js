@@ -1,5 +1,5 @@
-/* Definition Gym X · service worker: guarda la app para abrirla sin conexión */
-const CACHE = 'definition-gym-x-v1';
+/* Héctor Tu Entrenador Personal · service worker: guarda la app para abrirla sin conexión */
+const CACHE = 'hector-entrenador-v2';
 const SHELL = [
   './',
   './index.html',
