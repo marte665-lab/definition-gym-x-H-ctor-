@@ -304,7 +304,8 @@ async function tokenAdmin(){
 }
 async function sb(path, o = {}){
   const t = o.auth === false ? null : await tokenAdmin();
-  const h = {apikey:NUBE.key, 'Content-Type':'application/json', Authorization:'Bearer ' + (t || NUBE.key)};
+  const h = {apikey:NUBE.key, 'Content-Type':'application/json'};
+  if (t) h.Authorization = 'Bearer ' + t; else if (!NUBE.key.startsWith('sb_')) h.Authorization = 'Bearer ' + NUBE.key;   // las llaves nuevas (sb_publishable_…) van solo en apikey
   if (o.prefer) h.Prefer = o.prefer;
   const r = await fetch(NUBE.url + path, {method:o.method || 'GET', headers:h, body:o.body === undefined ? undefined : JSON.stringify(o.body)});
   let j = null; try{ j = await r.json(); }catch(e){}
