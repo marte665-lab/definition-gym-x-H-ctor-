@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Gestión de clientes de entrenamiento personal">
 <link rel="manifest" href="manifest.webmanifest">
@@ -157,6 +157,11 @@ body.portal .wa{bottom:calc(24px + env(safe-area-inset-bottom))}
 .sw{background:var(--card2);border:2px solid transparent;border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text);font-weight:600;font-size:12px;font-family:inherit;cursor:pointer}
 .sw i{width:34px;height:34px;border-radius:50%;display:block}
 .sw.on{border-color:var(--y)}
+.chk{display:flex;gap:12px;align-items:flex-start;color:var(--text);font-size:14px;font-weight:500;line-height:1.4;margin-bottom:14px}
+.chk input{width:22px;height:22px;margin:1px 0 0;flex:none;accent-color:var(--y);padding:0}
+.logo-login{width:76px;height:76px;margin:0 auto;border-radius:24px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);color:var(--y)}
+.logo-login .ic{width:38px;height:38px}
+.codigo{font-size:26px;font-weight:800;letter-spacing:.08em;text-align:center;background:var(--card2);border:1px dashed rgba(var(--yr),.5);border-radius:14px;padding:14px;margin:10px 0;color:var(--y);user-select:all}
 .sw.wide{grid-column:1/-1;flex-direction:row;justify-content:center;gap:12px;padding:12px}
 .dayrow{display:flex;align-items:center;gap:10px;margin-top:8px}
 .dayrow .dd{width:18px;height:18px;border-radius:50%;flex:none}
@@ -265,7 +270,280 @@ function cargar(){
   }catch(e){}
   return base;
 }
-function guardarDB(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} }
+function guardarDB(){
+  if (esCliente()) return;                       // un cliente nunca guarda datos en el equipo
+  try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){}
+  if (hayNube() && esAdmin()) programarSync();
+}
+
+/* ================= nube (Supabase propio) ================= */
+// Aquí van los datos de TU proyecto de Supabase. La llave "anon" es pública por diseño:
+// lo que protege los datos es el inicio de sesión y las reglas RLS (ver supabase/esquema.sql).
+const NUBE = {url:'', key:''};
+const hayNube = () => !!(NUBE.url && NUBE.key);
+const SKEY = 'hector-gym-sesion';
+let ses = (() => { try { return JSON.parse(localStorage.getItem(SKEY)); } catch(e){ return null; } })();
+const guardarSes = () => { try{ ses ? localStorage.setItem(SKEY, JSON.stringify(ses)) : localStorage.removeItem(SKEY); }catch(e){} };
+const esCliente = () => !!(ses && ses.tipo === 'cliente');
+const esAdmin = () => !!(ses && ses.tipo === 'admin');
+let clienteInfo = null;                 // {id, consentimiento}
+let accesos = {}, consents = {};        // solo administrador
+let snap = {}, catSnap = '', estadoNube = 'ok', tSync = null, refrescando = null;
+
+async function tokenAdmin(){
+  if (!esAdmin()) return null;
+  if (ses.expires_at - 60 > Date.now() / 1000) return ses.access_token;
+  if (!refrescando) refrescando = (async () => {
+    const r = await fetch(NUBE.url + '/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:NUBE.key, 'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ses.refresh_token})});
+    let j = null; try{ j = await r.json(); }catch(e){}
+    if (!r.ok || !j || !j.access_token){ const e = new Error('Tu sesión venció. Entra de nuevo.'); e.sesion = true; throw e; }
+    ses.access_token = j.access_token; ses.refresh_token = j.refresh_token; ses.expires_at = Math.floor(Date.now() / 1000) + j.expires_in; guardarSes();
+    return ses.access_token;
+  })().finally(() => { refrescando = null; });
+  return refrescando;
+}
+async function sb(path, o = {}){
+  const t = o.auth === false ? null : await tokenAdmin();
+  const h = {apikey:NUBE.key, 'Content-Type':'application/json', Authorization:'Bearer ' + (t || NUBE.key)};
+  if (o.prefer) h.Prefer = o.prefer;
+  const r = await fetch(NUBE.url + path, {method:o.method || 'GET', headers:h, body:o.body === undefined ? undefined : JSON.stringify(o.body)});
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if (!r.ok){ const e = new Error((j && (j.msg || j.message || j.error_description || j.error)) || ('Error ' + r.status)); e.status = r.status; e.data = j; throw e; }
+  return j;
+}
+const rpc = (fn, args, o) => sb('/rest/v1/rpc/' + fn, {method:'POST', body:args, ...o});
+const sinRed = e => e instanceof TypeError || !navigator.onLine;
+
+async function loginAdmin(email, pass){
+  if (!email || !pass) throw new Error('Escribe tu correo y tu contraseña.');
+  let j;
+  try{ j = await sb('/auth/v1/token?grant_type=password', {method:'POST', body:{email, password:pass}, auth:false}); }
+  catch(e){ throw sinRed(e) ? new Error('Sin conexión. Revisa tu internet.') : new Error('Correo o contraseña incorrectos.'); }
+  ses = {tipo:'admin', access_token:j.access_token, refresh_token:j.refresh_token, expires_at:Math.floor(Date.now() / 1000) + j.expires_in, email:j.user && j.user.email};
+  guardarSes();
+  let ok = false; try{ ok = (await rpc('es_admin', {})) === true; }catch(e){}
+  if (!ok){ ses = null; guardarSes(); throw new Error('Esta cuenta no es de administrador.'); }
+}
+async function loginCliente(ident, cod){
+  if (!String(ident).trim() || !String(cod).trim()) throw new Error('Escribe tu usuario o WhatsApp y tu código.');
+  let j;
+  try{ j = await rpc('cliente_entrar', {p_ident:ident, p_codigo:cod}, {auth:false}); }
+  catch(e){ throw sinRed(e) ? new Error('Sin conexión. Revisa tu internet.') : new Error('No se pudo entrar. Intenta de nuevo.'); }
+  if (!j || !j.ok) throw new Error(j && j.error === 'bloqueado' ? 'Demasiados intentos. Espera 15 minutos o pide un código nuevo.' : 'Usuario o código incorrecto.');
+  ses = {tipo:'cliente', token:j.token}; guardarSes();
+}
+
+async function cargarCliente(){
+  const j = await rpc('cliente_datos', {p_token:ses.token}, {auth:false});
+  if (!j || !j.ok || !j.cliente){ const e = new Error('Tu sesión venció. Entra de nuevo.'); e.sesion = true; throw e; }
+  clienteInfo = {id:j.id, consentimiento:!!j.consentimiento};
+  db = {clientes:[j.cliente], cat:j.catalogo || CAT0()};
+}
+async function cargarAccesos(){
+  const [a, c] = await Promise.all([
+    sb('/rest/v1/clientes_acceso?select=cliente_id,creado,ultimo_ingreso'),
+    sb('/rest/v1/consentimientos?select=cliente_id,aceptado_en,version&order=aceptado_en.desc')]);
+  accesos = {}; a.forEach(x => accesos[x.cliente_id] = x);
+  consents = {}; c.forEach(x => { if (!consents[x.cliente_id]) consents[x.cliente_id] = x; });
+}
+async function sincronizarAdmin(){
+  const [cl, cat] = await Promise.all([sb('/rest/v1/clientes?select=id,data'), sb('/rest/v1/catalogo?select=data&id=eq.1')]);
+  if (!cl.length && !cat.length){                 // la nube está vacía: sube lo que hay en este equipo
+    snap = {}; catSnap = '';
+    await subirCambios();
+  } else {                                       // la nube manda; se guarda copia de lo que había aquí
+    try{ if (db.clientes.length) localStorage.setItem(KEY + '-respaldo', JSON.stringify(db)); }catch(e){}
+    db = {clientes:cl.map(r => r.data), cat:(cat[0] && cat[0].data) || CAT0()};
+    snap = {}; db.clientes.forEach(c => snap[c.id] = JSON.stringify(c)); catSnap = JSON.stringify(db.cat);
+    try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){}
+  }
+  await cargarAccesos();
+}
+async function subirCambios(){
+  if (!hayNube() || !esAdmin()) return;
+  const act = {}; db.clientes.forEach(c => act[c.id] = JSON.stringify(c));
+  const cambios = db.clientes.filter(c => snap[c.id] !== act[c.id]);
+  const borrados = Object.keys(snap).filter(id => !(id in act));
+  const catS = JSON.stringify(db.cat), ahora = new Date().toISOString();
+  if (cambios.length) await sb('/rest/v1/clientes?on_conflict=id', {method:'POST', prefer:'resolution=merge-duplicates,return=minimal',
+    body:cambios.map(c => ({id:c.id, usuario:c.usuario || '', telefono:c.telefono || '', data:c, updated_at:ahora}))});
+  if (borrados.length) await sb('/rest/v1/clientes?id=in.(' + borrados.map(encodeURIComponent).join(',') + ')', {method:'DELETE'});
+  if (catS !== catSnap) await sb('/rest/v1/catalogo?on_conflict=id', {method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body:{id:1, data:db.cat, updated_at:ahora}});
+  cambios.forEach(c => snap[c.id] = act[c.id]); borrados.forEach(id => delete snap[id]); catSnap = catS;
+}
+function estadoTxt(){
+  return {ok:'☁ Guardado en la nube', pendiente:'☁ Guardando…', offline:'Sin conexión: los cambios se subirán cuando vuelva el internet', error:'No se pudo guardar en la nube. Se reintentará.'}[estadoNube] || '';
+}
+const pintarEstadoNube = () => document.querySelectorAll('.nube-estado').forEach(e => { e.textContent = estadoTxt(); });
+const nubeChip = () => (hayNube() && esAdmin()) ? `<div class="nube-estado muted" style="font-size:12px;margin:-6px 0 12px;text-align:right">${estadoTxt()}</div>` : '';
+function programarSync(){
+  clearTimeout(tSync); estadoNube = 'pendiente'; pintarEstadoNube();
+  tSync = setTimeout(async () => {
+    try{ await subirCambios(); estadoNube = 'ok'; }
+    catch(e){
+      if (e.sesion){ ses = null; guardarSes(); route(); return; }
+      estadoNube = sinRed(e) ? 'offline' : 'error';
+      if (estadoNube === 'error') setTimeout(programarSync, 20000);
+    }
+    pintarEstadoNube();
+  }, 900);
+}
+window.addEventListener('online', () => { if (hayNube() && esAdmin()) programarSync(); });
+
+/* ---------- pantallas de acceso ---------- */
+function pintar(html){ document.body.classList.add('portal'); $('#tabbar').innerHTML = ''; $('#app').innerHTML = html; window.scrollTo(0, 0); }
+function vistaEntrar(){
+  pintar(`<div style="text-align:center;margin:34px 0 22px"><div class="logo-login">${ic('dumb')}</div>
+    <h1 style="font-size:26px;letter-spacing:-.02em;margin-top:14px">${esc(T.negocio)}</h1><p class="muted" style="margin-top:4px">Inicia sesión para continuar</p></div>
+  <form class="card" onsubmit="entrar(event)">
+    <label>Entrar como
+      <select id="lg_rol" onchange="cambiarRolLogin()"><option value="cliente" selected>Cliente</option><option value="admin">Administrador</option></select></label>
+    <div id="lg_cliente">
+      <label>Usuario o número de WhatsApp<input id="lg_u" autocomplete="username" autocapitalize="none" placeholder="Ej: 8295551234"></label>
+      <label>Código de acceso<input id="lg_c" type="password" autocomplete="current-password" placeholder="Ej: K7M2-9QXP"></label></div>
+    <div id="lg_admin" hidden>
+      <label>Correo<input id="lg_e" type="email" autocomplete="email" autocapitalize="none"></label>
+      <label>Contraseña<input id="lg_p" type="password" autocomplete="current-password"></label></div>
+    <p id="lg_err" role="alert" style="color:var(--bad);font-size:13px;font-weight:600;margin:0 0 12px" hidden></p>
+    <button class="btn block" id="lg_btn">${ic('user','sm')}Entrar</button></form>
+  <p class="muted" style="text-align:center">¿No tienes tu código? Pídeselo a ${esc(T.nombre)} por WhatsApp.</p>`);
+}
+function cambiarRolLogin(){
+  const adm = $('#lg_rol').value === 'admin';
+  $('#lg_cliente').hidden = adm; $('#lg_admin').hidden = !adm; $('#lg_err').hidden = true;
+}
+async function entrar(ev){
+  ev.preventDefault();
+  const adm = $('#lg_rol').value === 'admin', err = $('#lg_err'), btn = $('#lg_btn');
+  err.hidden = true; btn.disabled = true; btn.textContent = 'Entrando…';
+  try{
+    if (adm) await loginAdmin($('#lg_e').value.trim(), $('#lg_p').value);
+    else await loginCliente($('#lg_u').value, $('#lg_c').value);
+  }catch(e){
+    err.textContent = e.message || 'No se pudo entrar.'; err.hidden = false;
+    btn.disabled = false; btn.innerHTML = ic('user','sm') + 'Entrar'; return;
+  }
+  history.replaceState(null, '', location.pathname + location.search);
+  arrancar();
+}
+async function cerrarSesion(){
+  if (esCliente()){
+    try{ await rpc('cliente_salir', {p_token:ses.token}, {auth:false}); }catch(e){}
+    ses = null; guardarSes(); clienteInfo = null; db = {clientes:[], cat:CAT0()};
+  } else if (esAdmin()){
+    if (estadoNube !== 'ok'){
+      try{ await subirCambios(); }
+      catch(e){ if (!confirm('Hay cambios que aún no se subieron a la nube y se perderían al salir. ¿Salir de todos modos?')) return; }
+    }
+    try{ localStorage.removeItem(KEY); }catch(e){}        // en un equipo ajeno no se deja nada guardado
+    ses = null; guardarSes(); snap = {}; catSnap = ''; accesos = {}; consents = {}; db = {clientes:[], cat:CAT0()};
+  }
+  history.replaceState(null, '', location.pathname + location.search);
+  route();
+}
+function vistaConsentimiento(){
+  pintar(`<div class="top"><h2>Antes de empezar</h2></div>
+  <div class="card"><div class="sec">${ic('note')}Aviso de privacidad</div>
+    <p class="muted" style="line-height:1.55">Tus datos (nombre, contacto, plan, pagos, medidas y datos de salud) se usan solo para planificar tu entrenamiento, llevar tu cuenta y darte seguimiento. El responsable es ${esc(T.nombre)} (${esc(T.negocio)}), en Santiago de los Caballeros, República Dominicana. Tus datos se guardan en servidores de Supabase, que pueden estar fuera del país. Puedes consultar, corregir o pedir que se borren tus datos escribiéndome por WhatsApp.</p></div>
+  <form class="card" onsubmit="aceptarConsent(event)">
+    <label class="chk"><input type="checkbox" id="cs_t" onchange="chkConsent()"><span>Acepto los términos del servicio de entrenamiento personal.</span></label>
+    <label class="chk"><input type="checkbox" id="cs_d" onchange="chkConsent()"><span>Autorizo el tratamiento de mis datos personales para los fines indicados arriba.</span></label>
+    <label class="chk"><input type="checkbox" id="cs_s" onchange="chkConsent()"><span>Autorizo el tratamiento de mis datos de salud (medidas, lesiones y condición física), que son datos sensibles.</span></label>
+    <p id="cs_err" role="alert" style="color:var(--bad);font-size:13px;font-weight:600;margin:0 0 12px" hidden></p>
+    <button class="btn block" id="cs_btn" disabled>Aceptar y continuar</button>
+    <button type="button" class="btn block ghost" style="margin-top:10px" onclick="cerrarSesion()">No acepto y salir</button></form>`);
+}
+const chkConsent = () => { $('#cs_btn').disabled = !($('#cs_t').checked && $('#cs_d').checked && $('#cs_s').checked); };
+async function aceptarConsent(ev){
+  ev.preventDefault(); const err = $('#cs_err'), btn = $('#cs_btn'); err.hidden = true; btn.disabled = true;
+  try{
+    const j = await rpc('cliente_aceptar', {p_token:ses.token, p_version:'v1', p_terminos:$('#cs_t').checked, p_datos:$('#cs_d').checked, p_salud:$('#cs_s').checked}, {auth:false});
+    if (!j || !j.ok) throw new Error('No se pudo guardar tu aceptación.');
+    clienteInfo.consentimiento = true; route();
+  }catch(e){ err.textContent = sinRed(e) ? 'Sin conexión. Intenta de nuevo.' : (e.message || 'Error'); err.hidden = false; btn.disabled = false; }
+}
+async function cambiarCodigo(ev){
+  ev.preventDefault(); const m = $('#cc_msg'); m.hidden = false; m.style.color = 'var(--muted)'; m.textContent = 'Guardando…';
+  try{
+    const j = await rpc('cliente_cambiar_codigo', {p_token:ses.token, p_actual:$('#cc_a').value, p_nuevo:$('#cc_n').value}, {auth:false});
+    if (!j || !j.ok) throw new Error(j && j.error === 'corto' ? 'El código nuevo debe tener al menos 6 caracteres.' : j && j.error === 'incorrecto' ? 'El código actual no es correcto.' : 'No se pudo cambiar.');
+    m.style.color = 'var(--ok)'; m.textContent = 'Listo, tu código fue cambiado.'; $('#cc_a').value = ''; $('#cc_n').value = '';
+  }catch(e){ m.style.color = 'var(--bad)'; m.textContent = sinRed(e) ? 'Sin conexión. Intenta de nuevo.' : (e.message || 'Error'); }
+}
+const cuentaCliente = () => `<div class="card"><div class="sec">${ic('user')}Mi acceso</div>
+  <form onsubmit="cambiarCodigo(event)"><label>Código actual<input id="cc_a" type="password" autocomplete="current-password" required></label>
+    <label>Código nuevo (mínimo 6 caracteres)<input id="cc_n" type="password" autocomplete="new-password" minlength="6" required></label>
+    <p id="cc_msg" class="muted" style="margin:0 0 10px" hidden></p>
+    <button class="btn block ghost">Cambiar mi código</button></form></div>
+  <button class="btn block danger" onclick="cerrarSesion()">Cerrar sesión</button>`;
+const cuentaAdminCard = () => !(hayNube() && esAdmin()) ? '' : `<div class="card"><div class="sec">${ic('user')}Mi cuenta</div>
+  <p class="muted" style="margin-bottom:6px">Sesión: <b style="color:var(--text)">${esc(ses.email || '')}</b></p>
+  <p class="nube-estado muted" style="margin-bottom:12px;font-size:13px">${estadoTxt()}</p>
+  <button class="btn block ghost" onclick="cerrarSesion()">Cerrar sesión</button></div>`;
+const respaldoTxt = () => (hayNube() && esAdmin())
+  ? 'Tus datos se guardan en la nube y una copia queda en este equipo. Aun así, exporta un respaldo de vez en cuando.'
+  : 'Tus datos se guardan solo en este dispositivo. Exporta un respaldo de vez en cuando.';
+
+/* ---------- acceso de clientes (lo maneja el administrador) ---------- */
+const codigosNuevos = {};
+function generarCodigo(){
+  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', b = new Uint8Array(8); crypto.getRandomValues(b);
+  const c = Array.from(b, x => abc[x % abc.length]).join(''); return c.slice(0, 4) + '-' + c.slice(4);
+}
+async function darAcceso(id){
+  const c = find(id); if (!c) return;
+  if (!String(c.usuario || '').trim() && !String(c.telefono || '').trim()){ alert('Primero agrega un usuario o número de WhatsApp al cliente (botón Editar).'); return; }
+  if (accesos[id] && !confirm('Se creará un código nuevo y el anterior dejará de servir. ¿Seguir?')) return;
+  try{
+    await subirCambios();                                   // el cliente tiene que existir en la nube
+    const cod = generarCodigo();
+    const j = await rpc('admin_dar_acceso', {p_cliente:id, p_codigo:cod});
+    if (!j || !j.ok) throw new Error('No se pudo crear el acceso.');
+    codigosNuevos[id] = cod; await cargarAccesos(); conservarScroll(route);
+  }catch(e){ alert(sinRed(e) ? 'Sin conexión. Intenta de nuevo cuando tengas internet.' : (e.message || 'No se pudo crear el acceso.')); }
+}
+async function quitarAcceso(id){
+  if (!confirm('El cliente ya no podrá entrar a la app. ¿Quitar el acceso?')) return;
+  try{ await rpc('admin_quitar_acceso', {p_cliente:id}); delete codigosNuevos[id]; await cargarAccesos(); conservarScroll(route); }
+  catch(e){ alert(e.message || 'No se pudo quitar el acceso.'); }
+}
+function accesoCard(c){
+  if (!(hayNube() && esAdmin())) return '';
+  const a = accesos[c.id], co = consents[c.id], cod = codigosNuevos[c.id];
+  const link = location.href.split('#')[0];
+  const msg = `Hola ${c.nombre.split(' ')[0]}, ya tienes tu acceso a tu app de entrenamiento.\nEntra aquí: ${link}\nUsuario: ${c.usuario || c.telefono}\nCódigo: ${cod || ''}\nPuedes cambiar tu código dentro de la app. — ${T.nombre}`;
+  return `<div class="card"><div class="sec">${ic('user')}Acceso a la app del cliente</div>
+    <div class="info">${ic('check')}<div><small>Estado</small><b>${a ? 'Tiene acceso' : 'Sin acceso todavía'}</b>
+      <div class="muted">${a ? (a.ultimo_ingreso ? 'Último ingreso ' + fdate(String(a.ultimo_ingreso).slice(0, 10)) : 'Aún no ha entrado') : 'Crea un código y envíaselo por WhatsApp.'}</div></div></div>
+    ${a ? `<div class="info">${ic('note')}<div><small>Consentimiento</small><b>${co ? 'Aceptado el ' + fdate(String(co.aceptado_en).slice(0, 10)) : 'Pendiente (lo acepta al primer ingreso)'}</b></div></div>` : ''}
+    ${cod ? `<div class="banner" style="display:block;margin-top:6px">Este código solo se muestra ahora. Envíaselo al cliente antes de salir de esta pantalla.</div>
+      <div class="codigo">${esc(cod)}</div>
+      <a class="btn block" target="_blank" rel="noopener" href="${waLink(c, msg)}">${ic('msg','sm')}Enviar por WhatsApp</a>` : ''}
+    <div class="actions" style="margin-top:12px"><button class="btn sm ${a ? 'ghost' : ''}" onclick="darAcceso('${c.id}')">${a ? 'Código nuevo' : 'Crear acceso'}</button>
+      ${a ? `<button class="btn sm danger" onclick="quitarAcceso('${c.id}')">Quitar acceso</button>` : ''}</div></div>`;
+}
+
+async function arrancar(){
+  aplicarTema();
+  if (!hayNube() || !ses) return route();
+  if (esCliente()){
+    pintar('<div class="card" style="text-align:center;margin-top:60px"><p class="muted">Cargando…</p></div>');
+    try{ await cargarCliente(); }
+    catch(e){
+      if (e.sesion){ ses = null; guardarSes(); return route(); }
+      pintar(`<div class="card" style="text-align:center;margin-top:60px"><p class="muted" style="margin-bottom:14px">${sinRed(e) ? 'Sin conexión. Revisa tu internet.' : 'No se pudo cargar tu información.'}</p><button class="btn" onclick="arrancar()">Reintentar</button></div>`);
+      return;
+    }
+    return route();
+  }
+  route();                                           // administrador: se ve al instante lo guardado en este equipo
+  try{ await sincronizarAdmin(); estadoNube = 'ok'; }
+  catch(e){
+    if (e.sesion){ ses = null; guardarSes(); return route(); }
+    estadoNube = sinRed(e) ? 'offline' : 'error';
+  }
+  route();
+}
 
 /* ================= utilidades ================= */
 const $ = s => document.querySelector(s);
@@ -479,7 +757,17 @@ const instalarCard = () => esApp()
 /* ================= rutas ================= */
 const TABS = [['','home','Inicio'],['clientes','users','Clientes'],['nuevo','plus','Nuevo'],['pagos','wallet','Pagos'],['horarios','cal','Horarios']];
 function route(){
-  const parts = (location.hash || '#/').split('/');
+  if (hayNube()){
+    if (!ses) return vistaEntrar();
+    if (esCliente()){
+      if (!clienteInfo) return arrancar();
+      if (!clienteInfo.consentimiento) return vistaConsentimiento();
+    }
+  }
+  let parts = (location.hash || '#/').split('/');
+  if (hayNube() && esCliente() && !(parts[1] === 'portal' && parts[2] === clienteInfo.id)){   // el cliente solo ve su propia página
+    history.replaceState(null, '', '#/portal/' + clienteInfo.id); parts = ['#', 'portal', clienteInfo.id];
+  }
   const a = parts[1] || '', b = parts[2];
   const map = {'':vistaHome, clientes:vistaLista, nuevo:()=>vistaForm(), cliente:()=>vistaFicha(b), editar:()=>vistaForm(find(b)),
     pagos:vistaPagos, horarios:vistaHorarios, planes:vistaPlanes, ajustes:vistaAjustes, portal:()=>vistaPortal(b), personalizar:vistaPersonalizar};
@@ -512,6 +800,7 @@ function vistaHome(){
       <div><b>${money(mes)}</b><span>Cobrado este mes</span></div>
       <div><b>${money(deuda)}</b><span>Por cobrar</span></div>
     </div></div>
+  ${nubeChip()}
   ${instalarEvt && !esApp() ? `<div class="banner" style="justify-content:space-between">${ic('down','sm')}<span style="flex:1">Instala la app en tu dispositivo</span><button class="btn sm" onclick="instalar()">Instalar</button></div>` : ''}
   <div class="grid">${tiles.map(t => `<a class="tile" href="${t[0]}"><span class="bubble" ${t[3] ? 'style="background:var(--y);color:var(--on)"' : ''}>${ic(t[1],'lg')}</span>${t[2]}</a>`).join('')}</div>
 
@@ -650,6 +939,7 @@ function vistaFicha(id){
       <button class="btn sm danger" onclick="eliminar('${c.id}')">${ic('trash','sm')}Eliminar</button>
     </div></div>
 
+  ${accesoCard(c)}
   <div class="card"><div class="sec">${ic('wallet')}Registrar pago</div>
     <form onsubmit="addPago(event,'${c.id}')">
       <div class="grid2"><label>Fecha<input type="date" id="p_fecha" value="${hoy()}"></label><label>Monto (RD$)<input type="number" id="p_monto" min="1" inputmode="numeric" required></label></div>
@@ -704,7 +994,7 @@ const colorCard = () => `<div class="card"><div class="sec">${ic('palette')}Colo
 function vistaPortal(id){
   const c = find(id); if (!c) return topbar('Cliente','#/clientes') + vacio('users','Cliente no encontrado.');
   const k = cuenta(c), pl = planDe(c), sem = semana(c), pc = proximoCobro(c);
-  return `<div class="banner">${ic('eye','sm')}<span>Así lo verá ${esc(c.nombre.split(' ')[0])}. <a href="#/cliente/${c.id}" style="text-decoration:underline">Volver a la ficha</a></span></div>
+  return `${esCliente() ? '' : `<div class="banner">${ic('eye','sm')}<span>Así lo verá ${esc(c.nombre.split(' ')[0])}. <a href="#/cliente/${c.id}" style="text-decoration:underline">Volver a la ficha</a></span></div>`}
   <div class="hero"><small>${esc(T.negocio)}</small><h1>Hola, ${esc(c.nombre.split(' ')[0])}</h1>
     <div style="position:relative;z-index:1;font-weight:700">${ic('target','sm')} ${META[c.meta] || ''}</div>
     ${pl.auto ? `<div style="position:relative;z-index:1;margin-top:12px;font-size:13px;font-weight:700">Semana ${Math.min(sem,12)} de 12</div><div class="bar" style="background:rgba(0,0,0,.18)"><i style="width:${Math.min(100,sem/12*100)}%;background:var(--on)"></i></div>` : ''}</div>
@@ -723,7 +1013,8 @@ function vistaPortal(id){
 
   <div class="card"><div class="sec">${ic('chart')}Tu progreso</div>${grafica(c.medidas)}${cambioPeso(c.medidas)}</div>
   <div class="card"><div class="sec">${ic('wallet')}Tus pagos</div>${movs(c, false)}</div>
-  ${colorCard()}`;
+  ${colorCard()}
+  ${esCliente() ? cuentaCliente() : ''}`;
 }
 
 /* ================= pagos ================= */
@@ -782,9 +1073,10 @@ function delDieta(id){ if(db.clientes.some(c=>c.dieta===id)){alert('Hay clientes
 function vistaAjustes(){
   const demo = db.clientes.some(c => String(c.id).startsWith('demo'));
   return topbar('Ajustes', '#/') + `
+  ${cuentaAdminCard()}
   ${instalarCard()}
   <a class="btn block" href="#/personalizar" style="margin-bottom:14px">${ic('palette','sm')}Editar app: color, brillo y letra</a>
-  <div class="card"><div class="sec">${ic('down')}Respaldo</div><p class="muted" style="margin-bottom:12px">Tus datos se guardan solo en este dispositivo. Exporta un respaldo de vez en cuando.</p>
+  <div class="card"><div class="sec">${ic('down')}Respaldo</div><p class="muted" style="margin-bottom:12px">${respaldoTxt()}</p>
     <button class="btn block" onclick="exportar()">${ic('down','sm')}Exportar respaldo</button>
     <label style="margin-top:14px">Importar respaldo<input type="file" accept="application/json" onchange="importar(this)"></label></div>
   <div class="card"><div class="sec">${ic('users')}Ejemplos</div><p class="muted" style="margin-bottom:12px">Carga clientes de prueba para revisar cómo se ve la app, y quítalos cuando quieras.</p>
@@ -810,8 +1102,7 @@ function cargarDemo(){
   guardarDB(); route();
 }
 
-aplicarTema();
-route();
+arrancar();
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
