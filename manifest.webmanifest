@@ -1,0 +1,23 @@
+{
+  "name": "Definition Gym X",
+  "short_name": "Definition X",
+  "description": "Tu plataforma de gestión fitness",
+  "lang": "es",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "categories": ["fitness", "health", "business"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Nuevo cliente", "url": "./#/nuevo" },
+    { "name": "Pagos y deudas", "url": "./#/pagos" }
+  ]
+}

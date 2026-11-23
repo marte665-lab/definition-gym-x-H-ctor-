@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="description" content="Tu plataforma de gestión fitness">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Definition X">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Definition Gym X</title>
+<style>
+:root{
+  --bg:#0a0a0b;--bg2:#111113;--card:#16161a;--card2:#1c1c21;--line:#26262c;
+  --y:#C19933;--y2:#A07A1F;--yr:193,153,51;--on:#17130a;--tabbg:rgba(18,18,21,.92);--text:#f4f4f5;--muted:#8d8d96;
+  --bad:#ff6b6b;--warn:#ffb020;--ok:#3ddc84;
+  --r:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:radial-gradient(600px 300px at 90% -50px,rgba(var(--yr),.07),transparent 70%),var(--bg);
+  min-height:100vh;padding-bottom:120px;line-height:1.35}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,p{margin:0}
+#app{max-width:520px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px 0}
+.muted{color:var(--muted);font-size:13px}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.sm{width:18px;height:18px}.ic.lg{width:28px;height:28px}
+
+/* tarjetas */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.sec{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:12px}
+.sec .ic{color:var(--y)}
+.sec .more{margin-left:auto;font-size:13px;font-weight:600;color:var(--y)}
+
+/* cabecera */
+.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.top h2{font-size:22px;font-weight:800;letter-spacing:-.02em;flex:1}
+.back{width:42px;height:42px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;color:var(--text)}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--y),var(--y2));color:var(--on);border-radius:26px;padding:20px 20px 18px;margin-bottom:16px;box-shadow:0 18px 40px -22px rgba(var(--yr),.45)}
+.hero:after{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.09)}
+.hero small{font-weight:700;opacity:.7;letter-spacing:.04em;text-transform:uppercase;font-size:11px}
+.hero h1{font-size:30px;letter-spacing:-.03em;font-weight:800;margin:2px 0 16px;position:relative}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;position:relative;z-index:1}
+.stats div{background:rgba(10,10,11,.92);color:var(--y);border-radius:16px;padding:12px 8px;text-align:center;min-width:0;overflow-wrap:anywhere}
+.stats b{display:block;font-size:16px;letter-spacing:-.01em}
+.stats span{font-size:11px;color:#c9c9cf}
+
+/* mosaicos */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px 6px 14px;text-align:center;font-size:12.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:10px;transition:transform .12s,border-color .12s}
+.tile:active{transform:scale(.96)}
+.tile .bubble{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:rgba(var(--yr),.12);color:var(--y)}
+.tile.hi .bubble{background:var(--y);color:var(--on)}
+
+/* items */
+.item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px 14px;margin-bottom:10px}
+.item .grow{flex:1;min-width:0}
+.item b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar{width:42px;height:42px;border-radius:14px;background:rgba(var(--yr),.14);color:var(--y);display:grid;place-items:center;font-weight:800;flex:none}
+.avatar.big{width:54px;height:54px;border-radius:18px;font-size:20px}
+.pill{font-size:12px;padding:5px 10px;border-radius:99px;font-weight:700;white-space:nowrap}
+.pill.ok{background:rgba(61,220,132,.14);color:var(--ok)}
+.pill.warn{background:rgba(255,176,32,.15);color:var(--warn)}
+.pill.bad{background:rgba(255,107,107,.15);color:var(--bad)}
+.pill.off{background:#232328;color:var(--muted)}
+
+/* botones */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--y);color:var(--on);border:0;border-radius:14px;padding:13px 18px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn.sm{padding:9px 13px;font-size:13px;border-radius:12px}
+.btn.ghost{background:transparent;color:var(--y);border:1px solid rgba(var(--yr),.45)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid rgba(255,107,107,.45)}
+.btn.block{display:flex;width:100%}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;padding:4px;display:grid;place-items:center}
+.x:hover{color:var(--bad)}
+
+/* formularios */
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:14px;padding:13px 14px;font-size:15px;margin-top:6px;font-family:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--y);box-shadow:0 0 0 3px rgba(var(--yr),.15)}
+select{appearance:none;-webkit-appearance:none;padding-right:40px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23c9c9d1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+textarea{min-height:76px;resize:vertical}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dias{display:flex;gap:6px;margin:6px 0 14px}
+.dia{flex:1;margin:0}
+.dia input{display:none}
+.dia span{display:grid;place-items:center;height:42px;border-radius:12px;background:var(--card2);border:1px solid var(--line);color:var(--text);font-weight:700;cursor:pointer}
+.dia input:checked+span{background:var(--y);color:var(--on);border-color:var(--y)}
+.fsec{font-size:12px;font-weight:800;color:var(--y);letter-spacing:.08em;text-transform:uppercase;margin:6px 0 10px}
+.hidden{display:none}
+
+/* saldo */
+.saldo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.saldo .big{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.saldo .big.bad{color:var(--bad)}.saldo .big.ok{color:var(--ok)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-top:14px}
+.kv div{background:var(--card2);border-radius:14px;padding:10px;text-align:center}
+.kv b{display:block;font-size:14px}.kv span{font-size:11px;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--card2);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--y),var(--y2));border-radius:99px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:13px;font-weight:600}
+.chip.y{background:rgba(var(--yr),.14);color:var(--y);border-color:transparent}
+.info{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.info:last-child{border:0}
+.info .ic{color:var(--y);margin-top:1px}
+.info small{display:block;color:var(--muted);font-size:12px}
+
+/* movimientos */
+.mov{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.mov:last-child{border:0}
+.mov .dot{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;flex:none}
+.mov .dot.in{background:rgba(61,220,132,.14);color:var(--ok)}
+.mov .dot.out{background:rgba(255,107,107,.14);color:var(--bad)}
+.mov .grow{flex:1;min-width:0}
+.mov small{display:block;color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--y);font-weight:700}
+.delta{font-weight:800}.delta.ok{color:var(--ok)}.delta.bad{color:var(--bad)}
+
+/* portal */
+.banner{display:flex;gap:10px;align-items:center;background:rgba(var(--yr),.1);border:1px dashed rgba(var(--yr),.5);color:var(--y);padding:10px 12px;border-radius:14px;font-size:12.5px;font-weight:600;margin-bottom:14px}
+
+/* flotante y menú */
+.wa{position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--y);color:var(--on);display:grid;place-items:center;box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 0 5px rgba(var(--yr),.14);z-index:20}
+.wa svg{width:30px;height:30px}
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 24px);max-width:496px;background:var(--tabbg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:24px;display:flex;justify-content:space-around;padding:8px 4px;z-index:15}
+.tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted);padding:6px 0;border-radius:16px}
+.tabbar a.on{color:var(--y)}
+.tabbar a.on .ic{filter:none}
+body.portal .tabbar{display:none}
+body.portal{padding-bottom:100px}
+body.portal .wa{bottom:calc(24px + env(safe-area-inset-bottom))}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:14px}
+.empty .ic{width:34px;height:34px;color:#44444c;margin-bottom:8px}
+.price-row{display:grid;grid-template-columns:minmax(0,1fr) 84px 84px 30px;gap:8px;align-items:end;margin-bottom:8px}
+.price-row input{margin-top:0;padding:10px}
+.price-row .nm{font-weight:700;font-size:14px;padding-bottom:10px}
+.hd{display:grid;grid-template-columns:minmax(0,1fr) 84px 84px 30px;gap:8px;font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700}
+
+/* ---- editar app ---- */
+.hero small{display:block;max-width:58%}
+.hero .edit-btn{position:absolute;top:14px;right:14px;z-index:2;display:inline-flex;align-items:center;gap:6px;background:rgba(10,10,11,.86);color:var(--y);border-radius:12px;padding:8px 12px;font-weight:700;font-size:13px}
+.sws{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sw{background:var(--card2);border:2px solid transparent;border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text);font-weight:600;font-size:12px;font-family:inherit;cursor:pointer}
+.sw i{width:34px;height:34px;border-radius:50%;display:block}
+.sw.on{border-color:var(--y)}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:12px 6px;border-radius:12px;background:var(--card2);border:1px solid var(--line);color:var(--text);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}
+.seg button.on{background:var(--y);color:var(--on);border-color:var(--y)}
+input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--y);box-shadow:none;height:34px}
+.between{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-4px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<a class="wa" id="fab" href="https://wa.me/18292665369" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg viewBox="0 0 32 32" fill="none"><path d="M16 3.5A12.5 12.5 0 0 0 5.2 22.3L3.5 28.5l6.4-1.7A12.5 12.5 0 1 0 16 3.5z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 10c-.5 0-1.3.6-1.5 1.5-.3 1.3.5 3.3 2.2 5.2 1.9 2.1 4 3.1 5.4 3.1 1 0 1.8-.8 2-1.5.1-.4 0-.7-.3-.9l-1.9-1c-.3-.1-.6 0-.8.2l-.7.8c-.2.2-.4.2-.6.1-.9-.4-2.2-1.4-3-2.6-.1-.2-.1-.4 0-.6l.6-.8c.2-.2.2-.5.1-.7l-.9-2c-.1-.3-.4-.4-.6-.4z" fill="currentColor"/></svg>
+</a>
+
+<nav class="tabbar" id="tabbar"></nav>
+
+<script>
+/* ================= iconos ================= */
+const P = {
+  home:'<path d="M3.5 10.8 12 3.5l8.5 7.3V19a1.5 1.5 0 0 1-1.5 1.5h-3.8v-5.6H8.8v5.6H5A1.5 1.5 0 0 1 3.5 19z"/>',
+  users:'<circle cx="9" cy="8.5" r="3.5"/><path d="M2.8 20c.3-3.4 2.9-5.5 6.2-5.5s5.900 2.100 6.200 5.500"/><path d="M15.800 5.200a3.400 3.400 0 0 1 0 6.600"/><path d="M18.200 14.800c1.900.6 3.200 2.300 3.400 5.200"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  wallet:'<rect x="2.5" y="5.5" width="19" height="13" rx="3"/><path d="M2.500 10h19"/><circle cx="17" cy="14.200" r="1"/>',
+  cal:'<rect x="3.500" y="5" width="17" height="15.500" rx="3"/><path d="M3.500 10h17M8 3v4M16 3v4"/>',
+  clip:'<rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3.500h6v3H9zM9 11h6M9 15h4"/>',
+  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  back:'<path d="m14.500 5-7 7 7 7"/>',
+  chev:'<path d="m9.500 5 7 7-7 7"/>',
+  chart:'<path d="M3 17.500 9 11.500l4 4L21 7"/><path d="M15 7h6v6"/>',
+  dumb:'<path d="M6.500 7v10M17.500 7v10M3.500 9.500v5M20.500 9.500v5M6.500 12h11"/>',
+  leaf:'<path d="M5 19.500C4.500 10.500 10 4.500 20 4c.2 10-5 15.800-15 15.500z"/><path d="M5 19.500C8 14 11.500 10.500 16 8.500"/>',
+  target:'<circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="4.500"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>',
+  search:'<circle cx="11" cy="11" r="6.500"/><path d="m20 20-4.200-4.200"/>',
+  trash:'<path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l.9 12.500h9.200L17.500 7"/>',
+  edit:'<path d="M4 20h4L19.500 8.500a2.100 2.100 0 0 0-3-3L5 17z"/><path d="m14.500 7.500 2 2"/>',
+  eye:'<path d="M2.500 12S6 5.500 12 5.500 21.500 12 21.500 12 18 18.500 12 18.500 2.500 12 2.500 12z"/><circle cx="12" cy="12" r="2.800"/>',
+  down:'<path d="M12 4v11M7.500 10.500 12 15l4.500-4.500M4.500 19.500h15"/>',
+  up:'<path d="M12 16V5M7.500 9.500 12 5l4.500 4.500M4.500 19.500h15"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  check:'<path d="m5 12.500 4.500 4.500L19 7.500"/>',
+  clock:'<circle cx="12" cy="12" r="8.500"/><path d="M12 7.500V12l3 2"/>',
+  msg:'<path d="M20.500 11.500a8 8 0 0 1-11.800 7L3.500 20l1.600-4.600a8 8 0 1 1 15.400-3.900z"/>',
+  bag:'<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6.500a3 3 0 0 1 6 0V8"/>',
+  arrowin:'<path d="M12 5v13M6.500 13 12 18.500 17.500 13"/>',
+  arrowout:'<path d="M12 19V6M6.500 11 12 5.500 17.500 11"/>',
+  user:'<circle cx="12" cy="8.500" r="3.800"/><path d="M4.500 20c.6-3.800 3.600-6 7.500-6s6.900 2.200 7.500 6"/>',
+  note:'<path d="M6 3.500h9l3.500 3.500v13.500H6z"/><path d="M14.500 3.500V7.500h4M9 12h6M9 16h6"/>',
+  palette:'<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.5-1.2-2.7 0-.9.8-1.5 1.7-1.5H17a3.5 3.5 0 0 0 3.5-3.5C20.5 6.5 16.800 3.500 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.2" cy="7.6" r="1"/><circle cx="14.2" cy="7.6" r="1"/>'
+};
+const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24">${P[n] || ''}</svg>`;
+
+/* ================= datos ================= */
+const KEY = 'hector-gym-v2';
+const OLD = 'hector-gym-v1';
+const WA_HECTOR = '18292665369';
+const META = {grasa:'Perder grasa', masa:'Ganar masa muscular', tono:'Tonificar'};
+const FREC = {semanal:{n:'Semanal', dias:7, sem:1}, quincenal:{n:'Quincenal', dias:14, sem:2}, mensual:{n:'Mensual', dias:28, sem:4}};
+const DIAS = [['L','Lunes'],['M','Martes'],['X','Miércoles'],['J','Jueves'],['V','Viernes'],['S','Sábado'],['D','Domingo']];
+const MED = [['peso','Peso (lb)'],['estatura','Estatura (cm)'],['pecho','Pecho'],['cintura','Cintura'],['cadera','Cadera'],['brazo','Brazo'],['pierna','Pierna'],['grasa','% grasa']];
+
+const CAT0 = () => ({
+  planes:[
+    {id:'p3', nombre:'3 días por semana', precio:500, min:350, auto:true},
+    {id:'p5', nombre:'5 días por semana', precio:750, min:500, auto:true},
+    {id:'dia', nombre:'Día suelto', precio:200, min:200, auto:false},
+    {id:'nada', nombre:'Sin plan', precio:0, min:0, auto:false}
+  ],
+  dietas:[
+    {id:'masa', nombre:'Aumento de masa muscular', meta:'masa'},
+    {id:'desinf', nombre:'Desinflamación', meta:'grasa'},
+    {id:'keto', nombre:'Keto + ayuno 16/8', meta:'grasa'},
+    {id:'nada', nombre:'Sin dieta', meta:''}
+  ]
+});
+
+let db = cargar();
+function cargar(){
+  try{
+    const v2 = JSON.parse(localStorage.getItem(KEY));
+    if (v2 && v2.clientes) return v2;
+  }catch(e){}
+  const base = {clientes:[], cat:CAT0()};
+  try{
+    const v1 = JSON.parse(localStorage.getItem(OLD));
+    if (v1 && v1.clientes){
+      const mapP = {'3':'p3','5':'p5','dia':'dia','ninguno':'nada'};
+      const precios = {p3:500, p5:750, dia:200, nada:0};
+      v1.clientes.forEach(o => {
+        const plan = mapP[o.plan] || 'nada';
+        base.clientes.push({
+          id:o.id, nombre:o.nombre, usuario:o.telefono || '', telefono:o.telefono || '',
+          registro:o.inicio, inicio:o.inicio, meta:o.meta || 'grasa', plan,
+          cuota: o.referido ? Math.round(precios[plan]*.8) : precios[plan],
+          frecuencia:o.frecuencia || 'semanal', dieta:o.dieta === 'ninguna' ? 'nada' : (o.dieta || 'nada'),
+          dias:o.dias || [], hora:o.hora || '', notaDieta:'', notaPlan:'',
+          activo:o.activo !== false, cargos:[], pagos:o.pagos || [], medidas:o.medidas || []
+        });
+      });
+    }
+  }catch(e){}
+  return base;
+}
+function guardarDB(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} }
+
+/* ================= utilidades ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => 'RD$' + Number(n || 0).toLocaleString('es-DO');
+const iso = d => { const z = new Date(d.getTime() - d.getTimezoneOffset()*6e4); return z.toISOString().slice(0,10); };
+const hoy = () => iso(new Date());
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const fdate = s => { if(!s) return '—'; const [y,m,d] = s.split('-'); return `${d}/${m}/${y.slice(2)}`; };
+const dd = (a,b) => Math.round((new Date(a+'T12:00') - new Date(b+'T12:00')) / 864e5);
+const find = id => db.clientes.find(c => c.id === id);
+const planDe = c => db.cat.planes.find(p => p.id === c.plan) || {nombre:'Sin plan', precio:0, min:0, auto:false};
+const dietaDe = c => db.cat.dietas.find(d => d.id === c.dieta) || {nombre:'Sin dieta'};
+const sum = (arr, k) => arr.reduce((s,x) => s + Number(x[k] || 0), 0);
+const ini = n => (n || '?').trim().split(/\s+/).slice(0,2).map(x => x[0]).join('').toUpperCase();
+const optHTML = (list, sel, lab = x => x.nombre) => list.map(x => `<option value="${x.id}" ${x.id === sel ? 'selected' : ''}>${esc(lab(x))}</option>`).join('');
+const obj2opts = (o, sel) => Object.entries(o).map(([k,v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${esc(typeof v === 'string' ? v : v.n)}</option>`).join('');
+
+/* ================= cuentas ================= */
+function periodos(c){
+  const pl = planDe(c);
+  if (!c.activo || !pl.auto || !c.inicio || !c.cuota) return [];
+  const f = FREC[c.frecuencia] || FREC.semanal;
+  const out = []; const d = new Date(c.inicio + 'T12:00'); const fin = new Date(hoy() + 'T12:00');
+  for (let i = 0; d <= fin && i < 400; i++){
+    out.push({id:'auto'+i, fecha:iso(d), concepto:`${pl.nombre} · ${f.sem === 1 ? '1 semana' : f.sem + ' semanas'}`, monto:Number(c.cuota) * f.sem, auto:true});
+    d.setDate(d.getDate() + f.dias);
+  }
+  return out;
+}
+function cuenta(c){
+  const auto = periodos(c);
+  const cargos = [...auto, ...c.cargos];
+  const tc = sum(cargos, 'monto'), tp = sum(c.pagos, 'monto');
+  return {cargos, auto, totalCargos:tc, pagado:tp, saldo:tc - tp};
+}
+function proximoCobro(c){
+  const pl = planDe(c);
+  if (!c.activo || !pl.auto || !c.inicio) return null;
+  const f = FREC[c.frecuencia] || FREC.semanal;
+  const n = Math.max(0, Math.floor(dd(hoy(), c.inicio) / f.dias) + 1);
+  const d = new Date(c.inicio + 'T12:00'); d.setDate(d.getDate() + n * f.dias);
+  return iso(d);
+}
+function estado(c){
+  const k = cuenta(c), pl = planDe(c);
+  if (k.saldo > 0){
+    const f = FREC[c.frecuencia] || FREC.semanal;
+    const per = pl.auto ? Number(c.cuota) * f.sem : 0;
+    return {t:'Debe ' + money(k.saldo), k:(pl.auto && k.saldo <= per) ? 'warn' : 'bad'};
+  }
+  if (!c.activo) return {t:'Inactivo', k:'off'};
+  if (!pl.auto && c.plan === 'nada') return {t:'Sin plan', k:'off'};
+  return {t:'Al día', k:'ok'};
+}
+function semana(c){ return c.inicio ? Math.floor(dd(hoy(), c.inicio) / 7) + 1 : 0; }
+function waLink(c, text){
+  let d = String(c.telefono || '').replace(/\D/g,'');
+  if (d.length === 10) d = '1' + d;
+  return `https://wa.me/${d}${text ? '?text=' + encodeURIComponent(text) : ''}`;
+}
+function cuotaOpts(planId, cuota){
+  const pl = db.cat.planes.find(p => p.id === planId) || {precio:0, min:0};
+  const set = [];
+  if (pl.precio) set.push([pl.precio, 'Precio completo']);
+  const ref = Math.max(Math.round(pl.precio * .8), pl.min);
+  if (pl.precio && ref < pl.precio) set.push([ref, 'Con 1 referido (−20%)']);
+  if (pl.precio && pl.min < ref) set.push([pl.min, 'Mínimo con referidos']);
+  const vals = set.map(s => s[0]);
+  const otro = cuota !== '' && cuota != null && !vals.includes(Number(cuota));
+  return set.map(([v,l]) => `<option value="${v}" ${Number(cuota) === v ? 'selected' : ''}>${money(v)} · ${l}</option>`).join('')
+    + `<option value="otro" ${otro ? 'selected' : ''}>Otro monto…</option>`;
+}
+
+/* ================= tema / editar app ================= */
+const TKEY = 'hector-gym-tema';
+const ACENTOS = {
+  oro:{n:'Dorado', h:43, s:58}, ambar:{n:'Ámbar', h:30, s:68}, mostaza:{n:'Mostaza', h:52, s:48},
+  esmeralda:{n:'Esmeralda', h:152, s:45}, rojo:{n:'Rojo', h:2, s:60}, azul:{n:'Azul', h:212, s:60}
+};
+const FONDOS = {
+  negro:{n:'Negro', bg:'#0a0a0b', card:'#16161a', card2:'#1c1c21', line:'#26262c', tab:'rgba(18,18,21,.92)'},
+  gris:{n:'Gris oscuro', bg:'#17181b', card:'#202227', card2:'#282b31', line:'#34373e', tab:'rgba(32,34,39,.94)'}
+};
+const LETRAS = {m:{n:'Normal', z:1}, g:{n:'Grande', z:1.12}, xg:{n:'Muy grande', z:1.25}};
+const T0 = {acento:'oro', brillo:48, fondo:'negro', letra:'m', negocio:'Definición X Héctor', nombre:'Héctor'};
+let T = (() => {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(TKEY)) || {}; } catch(e) {}
+  return {...T0, ideas:[], ...saved};
+})();
+function guardarTema(){ try{ localStorage.setItem(TKEY, JSON.stringify(T)); }catch(e){} }
+function hsl2rgb(h, s, l){
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [0, 8, 4].map(n => Math.round(f(n) * 255));
+}
+function aplicarTema(){
+  const a = ACENTOS[T.acento] || ACENTOS.oro, f = FONDOS[T.fondo] || FONDOS.negro, L = Number(T.brillo) || 48;
+  const c1 = hsl2rgb(a.h, a.s, L), c2 = hsl2rgb(a.h, a.s, Math.max(L - 9, 20));
+  const r = document.documentElement.style;
+  r.setProperty('--y', `rgb(${c1})`); r.setProperty('--y2', `rgb(${c2})`); r.setProperty('--yr', c1.join(','));
+  r.setProperty('--on', L >= 44 ? '#17130a' : '#ffffff');
+  r.setProperty('--bg', f.bg); r.setProperty('--card', f.card); r.setProperty('--card2', f.card2);
+  r.setProperty('--line', f.line); r.setProperty('--tabbg', f.tab);
+  const z = (LETRAS[T.letra] || LETRAS.m).z;
+  $('#app').style.zoom = z === 1 ? '' : z;
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', f.bg);
+}
+const conservarScroll = fn => { const y = window.scrollY; fn(); window.scrollTo(0, y); };
+function setTema(k, v){ T[k] = v; guardarTema(); aplicarTema(); conservarScroll(route); }
+function setBrillo(v){
+  T.brillo = Number(v); guardarTema(); aplicarTema();
+  const e = $('#brv'); if (e) e.textContent = v + '%';
+  document.querySelectorAll('.sw').forEach(b => { const a = ACENTOS[b.dataset.k]; b.querySelector('i').style.background = `rgb(${hsl2rgb(a.h, a.s, T.brillo)})`; });
+}
+function setTexto(k, v){ T[k] = v; guardarTema(); }
+function resetTema(){
+  if (!confirm('¿Volver al color, fondo y tamaño de letra originales?')) return;
+  const ideas = T.ideas; T = {...T0, ideas}; guardarTema(); aplicarTema(); conservarScroll(route);
+}
+function addIdea(e){
+  e.preventDefault(); const t = $('#idea_t').value.trim(); if (!t) return;
+  T.ideas.push({id:uid(), t, fecha:hoy()}); guardarTema(); conservarScroll(route);
+}
+function delIdea(id){ T.ideas = T.ideas.filter(x => x.id !== id); guardarTema(); conservarScroll(route); }
+function copiarIdeas(btn){
+  const txt = T.ideas.map((x, i) => (i + 1) + '. ' + x.t).join('\n');
+  const listo = () => { btn.textContent = 'Lista copiada'; };
+  const alt = () => {
+    const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); listo(); } catch(e) { alert(txt); }
+    t.remove();
+  };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(listo, alt); else alt();
+}
+function vistaPersonalizar(){
+  const sw = Object.entries(ACENTOS).map(([k, a]) =>
+    `<button type="button" class="sw ${T.acento === k ? 'on' : ''}" data-k="${k}" onclick="setTema('acento','${k}')"><i style="background:rgb(${hsl2rgb(a.h, a.s, Number(T.brillo))})"></i>${a.n}</button>`).join('');
+  const seg = (key, obj) => `<div class="seg">${Object.entries(obj).map(([k, o]) =>
+    `<button type="button" class="${T[key] === k ? 'on' : ''}" onclick="setTema('${key}','${k}')">${o.n}</button>`).join('')}</div>`;
+  return topbar('Editar app', '#/') + `
+  <div class="card"><div class="sec">${ic('palette')}Color</div>
+    <div class="sws">${sw}</div>
+    <label style="margin-top:16px">Brillo del color <span id="brv" style="float:right;color:var(--text)">${T.brillo}%</span>
+      <input type="range" min="34" max="62" value="${T.brillo}" oninput="setBrillo(this.value)"></label>
+    <div class="between"><span>Más suave</span><span>Más brillante</span></div></div>
+  <div class="card"><div class="sec">${ic('sliders')}Fondo</div>${seg('fondo', FONDOS)}</div>
+  <div class="card"><div class="sec">${ic('note')}Tamaño de letra</div>${seg('letra', LETRAS)}</div>
+  <div class="card"><div class="sec">${ic('edit')}Nombres</div>
+    <label>Nombre del negocio<input value="${esc(T.negocio)}" oninput="setTexto('negocio', this.value)"></label>
+    <label>Tu nombre (para el saludo)<input value="${esc(T.nombre)}" oninput="setTexto('nombre', this.value)"></label></div>
+  <div class="card"><div class="sec">${ic('note')}Ideas para mejorar la app</div>
+    <p class="muted" style="margin-bottom:12px">Anota aquí lo que quieras cambiar mientras la usas. Luego copias la lista y me la pasas.</p>
+    <form onsubmit="addIdea(event)"><label>Nueva idea<textarea id="idea_t" placeholder="Ej: que el botón de pago sea más grande"></textarea></label>
+      <button class="btn block ghost">${ic('plus','sm')}Guardar idea</button></form>
+    <div style="margin-top:10px">${T.ideas.map(x => `<div class="mov"><div class="grow"><b style="font-weight:600">${esc(x.t)}</b><small>${fdate(x.fecha)}</small></div><button class="x" aria-label="Borrar" onclick="delIdea('${x.id}')">${ic('x','sm')}</button></div>`).join('') || '<div class="muted">Aún no hay ideas guardadas.</div>'}</div>
+    ${T.ideas.length ? `<button class="btn block" style="margin-top:12px" onclick="copiarIdeas(this)">Copiar lista</button>` : ''}</div>
+  <button class="btn block danger" onclick="resetTema()">Volver a lo original</button>`;
+}
+
+/* ================= instalar como app (PWA) ================= */
+let instalarEvt = null;
+const esApp = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instalarEvt = e; const h = location.hash; if (h === '' || h === '#/' || h.startsWith('#/ajustes')) route(); });
+window.addEventListener('appinstalled', () => { instalarEvt = null; route(); });
+function instalar(){
+  if (!instalarEvt) return;
+  instalarEvt.prompt();
+  instalarEvt.userChoice.finally(() => { instalarEvt = null; route(); });
+}
+const instalarCard = () => esApp()
+  ? `<div class="card"><div class="sec">${ic('check')}App instalada</div><p class="muted">Ya la tienes en la pantalla principal de este dispositivo.</p></div>`
+  : `<div class="card"><div class="sec">${ic('down')}Instalar en el celular o la computadora</div>
+      ${instalarEvt ? `<button class="btn block" onclick="instalar()">${ic('down','sm')}Instalar app</button>` : `
+      <p class="muted"><b>Android (Chrome):</b> menú ⋮ → “Instalar aplicación”.<br><b>iPhone (Safari):</b> Compartir → “Añadir a pantalla de inicio”.<br><b>Computadora (Chrome o Edge):</b> ícono de instalar al final de la barra de direcciones.</p>`}
+    </div>`;
+
+/* ================= rutas ================= */
+const TABS = [['','home','Inicio'],['clientes','users','Clientes'],['nuevo','plus','Nuevo'],['pagos','wallet','Pagos'],['horarios','cal','Horarios']];
+function route(){
+  const parts = (location.hash || '#/').split('/');
+  const a = parts[1] || '', b = parts[2];
+  const map = {'':vistaHome, clientes:vistaLista, nuevo:()=>vistaForm(), cliente:()=>vistaFicha(b), editar:()=>vistaForm(find(b)),
+    pagos:vistaPagos, horarios:vistaHorarios, planes:vistaPlanes, ajustes:vistaAjustes, portal:()=>vistaPortal(b), personalizar:vistaPersonalizar};
+  document.body.classList.toggle('portal', a === 'portal');
+  $('#app').innerHTML = (map[a] || vistaHome)();
+  $('#tabbar').innerHTML = TABS.map(([r,i,l]) => `<a href="#/${r}" class="${r === a ? 'on' : ''}">${ic(i)}${l}</a>`).join('');
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange', route);
+const topbar = (t, back, extra = '') => `<div class="top"><a class="back" href="${back}">${ic('back')}</a><h2>${t}</h2>${extra}</div>`;
+const vacio = (i, t) => `<div class="empty">${ic(i)}<div>${t}</div></div>`;
+
+/* ================= inicio ================= */
+function vistaHome(){
+  const ym = hoy().slice(0,7);
+  const act = db.clientes.filter(c => c.activo && planDe(c).auto).length;
+  let mes = 0; db.clientes.forEach(c => c.pagos.forEach(p => { if ((p.fecha || '').startsWith(ym)) mes += Number(p.monto); }));
+  const deben = db.clientes.map(c => ({c, k:cuenta(c)})).filter(x => x.k.saldo > 0).sort((a,b) => b.k.saldo - a.k.saldo);
+  const deuda = deben.reduce((s,x) => s + x.k.saldo, 0);
+  const codigo = ['D','L','M','X','J','V','S'][new Date().getDay()];
+  const hoyEntr = db.clientes.filter(c => c.activo && c.dias.includes(codigo)).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+  const tiles = [['#/clientes','users','Clientes',0],['#/nuevo','plus','Nuevo cliente',1],['#/pagos','wallet','Pagos y deudas',0],
+    ['#/horarios','cal','Horarios',0],['#/planes','clip','Planes y dietas',0],['#/ajustes','sliders','Ajustes',0]];
+  return `
+  <div class="hero"><a class="edit-btn" href="#/personalizar">${ic('palette','sm')}Editar app</a><small>${esc(T.negocio)}</small><h1>Hola, ${esc(T.nombre)}</h1>
+    <div class="stats">
+      <div><b>${act}</b><span>Clientes con plan</span></div>
+      <div><b>${money(mes)}</b><span>Cobrado este mes</span></div>
+      <div><b>${money(deuda)}</b><span>Por cobrar</span></div>
+    </div></div>
+  ${instalarEvt && !esApp() ? `<div class="banner" style="justify-content:space-between">${ic('down','sm')}<span style="flex:1">Instala la app en tu dispositivo</span><button class="btn sm" onclick="instalar()">Instalar</button></div>` : ''}
+  <div class="grid">${tiles.map(t => `<a class="tile" href="${t[0]}"><span class="bubble" ${t[3] ? 'style="background:var(--y);color:var(--on)"' : ''}>${ic(t[1],'lg')}</span>${t[2]}</a>`).join('')}</div>
+
+  <div class="card"><div class="sec">${ic('clock')}Entrenan hoy<a class="more" href="#/horarios">Ver semana</a></div>
+    ${hoyEntr.map(c => `<a class="mov" href="#/cliente/${c.id}"><span class="dot in" style="background:rgba(var(--yr),.14);color:var(--y)">${ic('dumb','sm')}</span><div class="grow"><b>${esc(c.nombre)}</b><small>${esc(planDe(c).nombre)}</small></div><b>${esc(c.hora || '')}</b></a>`).join('') || vacio('cal','Nadie tiene entrenamiento hoy.')}
+  </div>
+  <div class="card"><div class="sec">${ic('wallet')}Por cobrar<a class="more" href="#/pagos">Ver todo</a></div>
+    ${deben.slice(0,4).map(({c,k}) => `<a class="mov" href="#/cliente/${c.id}"><span class="avatar" style="width:34px;height:34px;border-radius:12px;font-size:13px">${ini(c.nombre)}</span><div class="grow"><b>${esc(c.nombre)}</b></div><b style="color:var(--bad)">${money(k.saldo)}</b></a>`).join('') || vacio('check','Todos están al día.')}
+  </div>`;
+}
+
+/* ================= lista ================= */
+function itemsHTML(q){
+  const list = db.clientes.filter(c => c.nombre.toLowerCase().includes(q.toLowerCase())).sort((a,b) => a.nombre.localeCompare(b.nombre));
+  if (!list.length) return vacio('users', db.clientes.length ? 'Sin resultados.' : 'Aún no hay clientes. Toca “Nuevo” para agregar el primero.');
+  return list.map(c => { const e = estado(c); return `<a class="item" href="#/cliente/${c.id}">
+    <span class="avatar">${ini(c.nombre)}</span>
+    <div class="grow"><b>${esc(c.nombre)}</b><span class="muted">${esc(planDe(c).nombre)} · ${esc(dietaDe(c).nombre)}</span></div>
+    <span class="pill ${e.k}">${esc(e.t)}</span></a>`; }).join('');
+}
+function vistaLista(){
+  return topbar('Clientes', '#/') +
+  `<div style="position:relative;margin-bottom:14px"><input placeholder="Buscar cliente" oninput="$('#lista').innerHTML=itemsHTML(this.value)" style="padding-left:44px;margin:0"><span style="position:absolute;left:14px;top:13px;color:var(--muted)">${ic('search')}</span></div>
+  <div id="lista">${itemsHTML('')}</div>`;
+}
+
+/* ================= formulario ================= */
+function vistaForm(c){
+  const v = c || {nombre:'', usuario:'', telefono:'', inicio:hoy(), meta:'grasa', plan:'p3', cuota:500, frecuencia:'semanal', dieta:'nada', dias:[], hora:'06:30', notaDieta:'', notaPlan:''};
+  return topbar(c ? 'Editar cliente' : 'Nuevo cliente', c ? '#/cliente/' + c.id : '#/clientes') + `
+  <form class="card" onsubmit="guardar(event,'${c ? c.id : ''}')">
+    <div class="fsec">Datos</div>
+    <label>Nombre<input id="f_nombre" required value="${esc(v.nombre)}" autocomplete="off"></label>
+    <div class="grid2">
+      <label>Teléfono (WhatsApp)<input id="f_tel" inputmode="tel" value="${esc(v.telefono)}" oninput="if(!$('#f_user').dataset.t)$('#f_user').value=this.value"></label>
+      <label>Usuario de acceso<input id="f_user" value="${esc(v.usuario)}" oninput="this.dataset.t=1" placeholder="Usuario"></label>
+    </div>
+    <label>Fecha de inicio<input type="date" id="f_inicio" value="${v.inicio}"></label>
+    <label>Meta del cliente<select id="f_meta">${obj2opts(META, v.meta)}</select></label>
+    <div class="fsec">Plan y pago</div>
+    <label>Tipo de plan<select id="f_plan" onchange="cambiarPlan()">${optHTML(db.cat.planes, v.plan)}</select></label>
+    <label>Lo que paga (por semana)<select id="f_cuota" onchange="cambiarCuota()">${cuotaOpts(v.plan, v.cuota)}</select>
+      <input id="f_cuota_otro" type="number" min="0" inputmode="numeric" class="${cuotaOpts(v.plan, v.cuota).includes('value="otro" selected') ? '' : 'hidden'}" value="${esc(v.cuota)}" placeholder="Monto semanal"></label>
+    <label>Frecuencia de pago<select id="f_frec">${obj2opts(FREC, v.frecuencia)}</select></label>
+    <div class="fsec">Dieta</div>
+    <label>Tipo de dieta<select id="f_dieta">${optHTML(db.cat.dietas, v.dieta)}</select></label>
+    <label>Notas de la dieta (las verá el cliente)<textarea id="f_nd" placeholder="Ej: sin brócoli ni coliflor, desayuno a las 7:00">${esc(v.notaDieta)}</textarea></label>
+    <div class="fsec">Entrenamiento</div>
+    <div class="muted" style="margin-bottom:2px">Días que entrena</div>
+    <div class="dias">${DIAS.map(([k]) => `<label class="dia"><input type="checkbox" name="dia" value="${k}" ${v.dias.includes(k) ? 'checked' : ''}><span>${k}</span></label>`).join('')}</div>
+    <label>Hora<input type="time" id="f_hora" value="${v.hora}"></label>
+    <label>Notas del plan (las verá el cliente)<textarea id="f_np" placeholder="Rutina, recomendaciones, lesiones...">${esc(v.notaPlan)}</textarea></label>
+    <button class="btn block">${ic('check')}Guardar cliente</button>
+  </form>`;
+}
+function cambiarPlan(){
+  const pl = db.cat.planes.find(p => p.id === $('#f_plan').value);
+  $('#f_cuota').innerHTML = cuotaOpts(pl.id, pl.precio);
+  $('#f_cuota_otro').classList.add('hidden'); $('#f_cuota_otro').value = pl.precio;
+}
+function cambiarCuota(){
+  const o = $('#f_cuota').value === 'otro';
+  $('#f_cuota_otro').classList.toggle('hidden', !o);
+  if (!o) $('#f_cuota_otro').value = $('#f_cuota').value;
+}
+function guardar(e, id){
+  e.preventDefault();
+  const cuota = Number($('#f_cuota').value === 'otro' ? $('#f_cuota_otro').value : $('#f_cuota').value) || 0;
+  const d = {nombre:$('#f_nombre').value.trim(), telefono:$('#f_tel').value.trim(), usuario:$('#f_user').value.trim() || $('#f_tel').value.trim(),
+    inicio:$('#f_inicio').value, meta:$('#f_meta').value, plan:$('#f_plan').value, cuota, frecuencia:$('#f_frec').value, dieta:$('#f_dieta').value,
+    dias:[...document.querySelectorAll('input[name=dia]:checked')].map(x => x.value), hora:$('#f_hora').value,
+    notaDieta:$('#f_nd').value.trim(), notaPlan:$('#f_np').value.trim()};
+  let dest = id;
+  if (id) Object.assign(find(id), d);
+  else { dest = uid(); db.clientes.push({id:dest, registro:d.inicio, ...d, activo:true, cargos:[], pagos:[], medidas:[]}); }
+  guardarDB(); location.hash = '#/cliente/' + dest; route();
+}
+
+/* ================= grafica ================= */
+function grafica(ms){
+  const pts = ms.filter(m => m.peso !== '' && m.peso != null).sort((a,b) => a.fecha.localeCompare(b.fecha));
+  if (pts.length < 2) return `<div class="muted">Registra al menos 2 pesos para ver la gráfica.</div>`;
+  const v = pts.map(p => Number(p.peso)); const mn = Math.min(...v) - 2, mx = Math.max(...v) + 2;
+  const W = 320, H = 130;
+  const xy = pts.map((p,i) => [10 + i * (W - 20) / (pts.length - 1), H - 12 - (Number(p.peso) - mn) / (mx - mn) * (H - 24)]);
+  const line = xy.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--y)" stop-opacity=".30"/><stop offset="1" style="stop-color:var(--y)" stop-opacity="0"/></linearGradient></defs>
+    <polygon fill="url(#g)" points="${xy[0][0]},${H} ${line} ${xy[xy.length-1][0]},${H}"/>
+    <polyline fill="none" style="stroke:var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${line}"/>
+    ${xy.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" style="fill:var(--bg);stroke:var(--y)" stroke-width="2.5"/>`).join('')}
+  </svg>`;
+}
+function cambioPeso(ms){
+  const pts = ms.filter(m => m.peso !== '' && m.peso != null).sort((a,b) => a.fecha.localeCompare(b.fecha));
+  if (pts.length < 2) return '';
+  const dif = Number(pts[pts.length-1].peso) - Number(pts[0].peso);
+  return `<div class="muted" style="margin-top:6px">${pts[0].peso} → ${pts[pts.length-1].peso} lb · <span class="delta ${dif <= 0 ? 'ok' : 'bad'}">${dif > 0 ? '+' : ''}${dif.toFixed(1)} lb</span> desde el inicio</div>`;
+}
+function movs(c, borrar){
+  const k = cuenta(c);
+  const all = [...k.cargos.map(x => ({...x, t:'cargo'})), ...c.pagos.map(x => ({...x, t:'pago', concepto:x.nota || 'Pago'}))].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  if (!all.length) return vacio('wallet','Sin movimientos todavía.');
+  return all.slice(0,60).map(m => `<div class="mov">
+    <span class="dot ${m.t === 'pago' ? 'in' : 'out'}">${ic(m.t === 'pago' ? 'arrowin' : 'arrowout','sm')}</span>
+    <div class="grow"><b>${esc(m.concepto || (m.t === 'pago' ? 'Pago' : 'Cobro'))}</b><small>${fdate(m.fecha)}${m.auto ? ' · automático' : ''}</small></div>
+    <b style="color:${m.t === 'pago' ? 'var(--ok)' : 'var(--text)'}">${m.t === 'pago' ? '+' : ''}${money(m.monto)}</b>
+    ${borrar && !m.auto ? `<button class="x" aria-label="Borrar" onclick="${m.t === 'pago' ? `delPago('${c.id}','${m.id}')` : `delCargo('${c.id}','${m.id}')`}">${ic('x','sm')}</button>` : ''}</div>`).join('');
+}
+
+/* ================= ficha ================= */
+function vistaFicha(id){
+  const c = find(id); if (!c) return topbar('Cliente','#/clientes') + vacio('users','Cliente no encontrado.');
+  const e = estado(c), k = cuenta(c), pl = planDe(c), pc = proximoCobro(c);
+  const sem = semana(c);
+  const ms = [...c.medidas].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  return topbar(esc(c.nombre), '#/clientes', `<span class="pill ${e.k}">${esc(e.t)}</span>`) + `
+  <div class="card">
+    <div class="saldo"><div><div class="muted">${k.saldo > 0 ? 'Debe' : k.saldo < 0 ? 'Saldo a favor' : 'Cuenta al día'}</div>
+      <div class="big ${k.saldo > 0 ? 'bad' : 'ok'}">${money(Math.abs(k.saldo))}</div></div>
+      <a class="btn sm ghost" href="${waLink(c, k.saldo > 0 ? `Hola ${c.nombre}, te recuerdo tu saldo pendiente de ${money(k.saldo)}. ¡Vamos con todo! — Héctor` : `Hola ${c.nombre}, `)}" target="_blank" rel="noopener">${ic('msg','sm')}WhatsApp</a></div>
+    <div class="kv"><div><b>${money(k.totalCargos)}</b><span>Cobrado al cliente</span></div><div><b>${money(k.pagado)}</b><span>Pagado</span></div><div><b>${pc ? fdate(pc) : '—'}</b><span>Próximo cobro</span></div></div>
+    ${pl.auto ? `<div class="muted" style="margin-top:14px">Semana ${Math.min(sem,12)} de 12 del compromiso${sem > 12 ? ' · completado' : ''}</div><div class="bar"><i style="width:${Math.min(100, sem / 12 * 100)}%"></i></div>` : ''}
+  </div>
+
+  <div class="card"><div class="sec">${ic('dumb')}Plan</div>
+    <div class="info">${ic('target')}<div><small>Meta</small><b>${META[c.meta] || '—'}</b></div></div>
+    <div class="info">${ic('clip')}<div><small>Plan</small><b>${esc(pl.nombre)}${pl.auto ? ` · ${money(c.cuota)} por semana (${FREC[c.frecuencia].n.toLowerCase()})` : ''}</b></div></div>
+    <div class="info">${ic('leaf')}<div><small>Dieta</small><b>${esc(dietaDe(c).nombre)}</b>${c.notaDieta ? `<div class="muted">${esc(c.notaDieta)}</div>` : ''}</div></div>
+    <div class="info">${ic('cal')}<div><small>Días y hora</small><div class="chips" style="margin-top:4px">${c.dias.length ? c.dias.map(d => `<span class="chip y">${d}</span>`).join('') + `<span class="chip">${esc(c.hora || '—')}</span>` : '<span class="muted">Sin días asignados</span>'}</div></div></div>
+    <div class="info">${ic('user')}<div><small>Usuario de acceso</small><b>${esc(c.usuario || '—')}</b><div class="muted">Inicio ${fdate(c.inicio)} · tel. ${esc(c.telefono || '—')}</div></div></div>
+    <div class="actions">
+      <a class="btn sm" href="#/editar/${c.id}">${ic('edit','sm')}Editar</a>
+      <a class="btn sm ghost" href="#/portal/${c.id}">${ic('eye','sm')}Vista del cliente</a>
+      <button class="btn sm ghost" onclick="toggleActivo('${c.id}')">${c.activo ? 'Pausar' : 'Reactivar'}</button>
+      <button class="btn sm danger" onclick="eliminar('${c.id}')">${ic('trash','sm')}Eliminar</button>
+    </div></div>
+
+  <div class="card"><div class="sec">${ic('wallet')}Registrar pago</div>
+    <form onsubmit="addPago(event,'${c.id}')">
+      <div class="grid2"><label>Fecha<input type="date" id="p_fecha" value="${hoy()}"></label><label>Monto (RD$)<input type="number" id="p_monto" min="1" inputmode="numeric" required></label></div>
+      <label>Nota<input id="p_nota" placeholder="Abono, semana, licras..."></label>
+      <button class="btn block">${ic('down','sm')}Guardar pago</button></form></div>
+
+  <div class="card"><div class="sec">${ic('bag')}Cobro especial</div>
+    <p class="muted" style="margin-bottom:10px">Para ventas o deudas que no son del plan: licras, un saldo anterior, un masaje…</p>
+    <form onsubmit="addCargo(event,'${c.id}')">
+      <div class="grid2"><label>Concepto<input id="c_conc" required placeholder="Licras"></label><label>Total (RD$)<input type="number" id="c_monto" min="1" inputmode="numeric" required></label></div>
+      <button class="btn block ghost">${ic('plus','sm')}Agregar cobro</button></form></div>
+
+  <div class="card"><div class="sec">${ic('note')}Movimientos</div>${movs(c, true)}</div>
+
+  <div class="card"><div class="sec">${ic('chart')}Progreso y medidas</div>
+    <form onsubmit="addMedida(event,'${c.id}')">
+      <label>Fecha<input type="date" id="m_fecha" value="${hoy()}"></label>
+      <div class="grid2">${MED.map(([kk,l]) => `<label>${l}<input id="m_${kk}" type="number" step="0.1" min="0" inputmode="decimal"></label>`).join('')}</div>
+      <button class="btn block">${ic('check','sm')}Guardar medidas</button></form>
+    <div style="margin:16px 0 4px">${grafica(c.medidas)}${cambioPeso(c.medidas)}</div>
+    <div style="overflow-x:auto;margin-top:10px"><table><tr><th>Fecha</th>${MED.map(([,l]) => `<th>${l.split(' ')[0]}</th>`).join('')}<th></th></tr>
+      ${ms.map(m => `<tr><td>${fdate(m.fecha)}</td>${MED.map(([kk]) => `<td>${esc(m[kk])}</td>`).join('')}<td><button class="x" aria-label="Borrar" onclick="delMedida('${c.id}','${m.id}')">${ic('x','sm')}</button></td></tr>`).join('')}</table></div>
+  </div>`;
+}
+function addPago(e,id){ e.preventDefault(); find(id).pagos.push({id:uid(), fecha:$('#p_fecha').value, monto:Number($('#p_monto').value), nota:$('#p_nota').value.trim()}); guardarDB(); route(); }
+function delPago(cid,pid){ if(!confirm('¿Borrar este pago?'))return; const c=find(cid); c.pagos=c.pagos.filter(p=>p.id!==pid); guardarDB(); route(); }
+function addCargo(e,id){ e.preventDefault(); find(id).cargos.push({id:uid(), fecha:hoy(), concepto:$('#c_conc').value.trim(), monto:Number($('#c_monto').value)}); guardarDB(); route(); }
+function delCargo(cid,xid){ if(!confirm('¿Borrar este cobro?'))return; const c=find(cid); c.cargos=c.cargos.filter(p=>p.id!==xid); guardarDB(); route(); }
+function addMedida(e,id){ e.preventDefault(); const m={id:uid(), fecha:$('#m_fecha').value}; MED.forEach(([k])=>m[k]=$('#m_'+k).value); find(id).medidas.push(m); guardarDB(); route(); }
+function delMedida(cid,mid){ if(!confirm('¿Borrar esta medida?'))return; const c=find(cid); c.medidas=c.medidas.filter(m=>m.id!==mid); guardarDB(); route(); }
+function toggleActivo(id){
+  const c = find(id);
+  if (c.activo){
+    if (!confirm('Se pausa al cliente: se guardan sus cobros hasta hoy y dejan de generarse nuevos. ¿Continuar?')) return;
+    periodos(c).forEach(p => c.cargos.push({id:uid(), fecha:p.fecha, concepto:p.concepto, monto:p.monto}));
+    c.activo = false;
+  } else {
+    if (!confirm('Se reactiva con un nuevo ciclo que empieza hoy. ¿Continuar?')) return;
+    c.activo = true; c.inicio = hoy();
+  }
+  guardarDB(); route();
+}
+function eliminar(id){ if(!confirm('¿Eliminar este cliente y todo su historial?'))return; db.clientes=db.clientes.filter(c=>c.id!==id); guardarDB(); location.hash='#/clientes'; }
+
+/* ================= portal del cliente ================= */
+function vistaPortal(id){
+  const c = find(id); if (!c) return topbar('Cliente','#/clientes') + vacio('users','Cliente no encontrado.');
+  const k = cuenta(c), pl = planDe(c), sem = semana(c), pc = proximoCobro(c);
+  return `<div class="banner">${ic('eye','sm')}<span>Así lo verá ${esc(c.nombre.split(' ')[0])}. <a href="#/cliente/${c.id}" style="text-decoration:underline">Volver a la ficha</a></span></div>
+  <div class="hero"><small>${esc(T.negocio)}</small><h1>Hola, ${esc(c.nombre.split(' ')[0])}</h1>
+    <div style="position:relative;z-index:1;font-weight:700">${ic('target','sm')} ${META[c.meta] || ''}</div>
+    ${pl.auto ? `<div style="position:relative;z-index:1;margin-top:12px;font-size:13px;font-weight:700">Semana ${Math.min(sem,12)} de 12</div><div class="bar" style="background:rgba(0,0,0,.18)"><i style="width:${Math.min(100,sem/12*100)}%;background:var(--on)"></i></div>` : ''}</div>
+
+  <div class="card"><div class="saldo"><div><div class="muted">${k.saldo > 0 ? 'Saldo pendiente' : 'Tu cuenta'}</div>
+    <div class="big ${k.saldo > 0 ? 'bad' : 'ok'}">${k.saldo > 0 ? money(k.saldo) : 'Al día'}</div></div>
+    <div style="text-align:right"><div class="muted">Próximo cobro</div><b>${pc ? fdate(pc) : '—'}</b></div></div></div>
+
+  <div class="card"><div class="sec">${ic('dumb')}Tu plan</div>
+    <div class="info">${ic('clip')}<div><small>Plan</small><b>${esc(pl.nombre)}</b></div></div>
+    <div class="info">${ic('cal')}<div><small>Días y hora</small><div class="chips" style="margin-top:4px">${c.dias.map(d => `<span class="chip y">${(DIAS.find(x => x[0] === d) || [d,d])[1]}</span>`).join('') || '—'}${c.hora ? `<span class="chip">${esc(c.hora)}</span>` : ''}</div></div></div>
+    ${c.notaPlan ? `<div class="info">${ic('note')}<div><small>Notas de tu entrenador</small>${esc(c.notaPlan)}</div></div>` : ''}</div>
+
+  <div class="card"><div class="sec">${ic('leaf')}Tu dieta</div>
+    <b>${esc(dietaDe(c).nombre)}</b>${c.notaDieta ? `<p class="muted" style="margin-top:6px">${esc(c.notaDieta)}</p>` : ''}</div>
+
+  <div class="card"><div class="sec">${ic('chart')}Tu progreso</div>${grafica(c.medidas)}${cambioPeso(c.medidas)}</div>
+  <div class="card"><div class="sec">${ic('wallet')}Tus pagos</div>${movs(c, false)}</div>`;
+}
+
+/* ================= pagos ================= */
+function vistaPagos(){
+  const ym = hoy().slice(0,7);
+  const todos = []; db.clientes.forEach(c => c.pagos.forEach(p => todos.push({...p, cli:c.nombre, cid:c.id})));
+  todos.sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const mes = todos.filter(p => p.fecha.startsWith(ym)).reduce((s,p) => s + Number(p.monto), 0);
+  const deben = db.clientes.map(c => ({c, k:cuenta(c)})).filter(x => x.k.saldo > 0).sort((a,b) => b.k.saldo - a.k.saldo);
+  const deuda = deben.reduce((s,x) => s + x.k.saldo, 0);
+  return topbar('Pagos y deudas', '#/') + `
+  <div class="grid2" style="margin-bottom:14px"><div class="card" style="margin:0"><div class="muted">Cobrado este mes</div><div style="font-size:22px;font-weight:800;color:var(--ok)">${money(mes)}</div></div>
+    <div class="card" style="margin:0"><div class="muted">Por cobrar</div><div style="font-size:22px;font-weight:800;color:var(--bad)">${money(deuda)}</div></div></div>
+  <div class="card"><div class="sec">${ic('clock')}Deudas</div>
+    ${deben.map(({c,k}) => `<div class="mov"><a href="#/cliente/${c.id}" class="avatar" style="width:36px;height:36px;border-radius:12px;font-size:13px">${ini(c.nombre)}</a><a href="#/cliente/${c.id}" class="grow"><b>${esc(c.nombre)}</b><small>${esc(planDe(c).nombre)}</small></a><b style="color:var(--bad)">${money(k.saldo)}</b>
+      <a class="btn sm ghost" style="padding:8px" aria-label="Recordar por WhatsApp" target="_blank" rel="noopener" href="${waLink(c, `Hola ${c.nombre}, te recuerdo tu saldo pendiente de ${money(k.saldo)}. ¡Vamos con todo! — Héctor`)}">${ic('msg','sm')}</a></div>`).join('') || vacio('check','Nadie debe nada.')}</div>
+  <div class="card"><div class="sec">${ic('note')}Historial de pagos</div>
+    ${todos.slice(0,80).map(p => `<a class="mov" href="#/cliente/${p.cid}"><span class="dot in">${ic('arrowin','sm')}</span><div class="grow"><b>${esc(p.cli)}</b><small>${fdate(p.fecha)}${p.nota ? ' · ' + esc(p.nota) : ''}</small></div><b style="color:var(--ok)">+${money(p.monto)}</b></a>`).join('') || vacio('wallet','Sin pagos registrados.')}</div>`;
+}
+
+/* ================= horarios ================= */
+function vistaHorarios(){
+  return topbar('Horarios', '#/') + DIAS.map(([d,n]) => {
+    const l = db.clientes.filter(c => c.activo && c.dias.includes(d)).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    return `<div class="card"><div class="sec">${ic('cal')}${n}<span class="more" style="color:var(--muted)">${l.length}</span></div>
+      ${l.map(c => `<a class="mov" href="#/cliente/${c.id}"><b style="color:var(--y);width:54px">${esc(c.hora || '--:--')}</b><div class="grow"><b>${esc(c.nombre)}</b></div><span class="muted">${esc(planDe(c).nombre)}</span></a>`).join('') || `<div class="muted">Sin entrenamientos.</div>`}</div>`;
+  }).join('');
+}
+
+/* ================= planes y dietas ================= */
+function vistaPlanes(){
+  return topbar('Planes y dietas', '#/') + `
+  <div class="card"><div class="sec">${ic('clip')}Planes y precios</div>
+    <div class="hd"><span>Plan</span><span>Precio</span><span>Mín. ref.</span><span></span></div>
+    ${db.cat.planes.map(p => `<div class="price-row"><div class="nm">${esc(p.nombre)}</div>
+      <input type="number" inputmode="numeric" min="0" value="${p.precio}" onchange="setPlan('${p.id}','precio',this.value)" aria-label="Precio">
+      <input type="number" inputmode="numeric" min="0" value="${p.min}" onchange="setPlan('${p.id}','min',this.value)" aria-label="Mínimo con referidos">
+      ${['nada','dia'].includes(p.id) ? '<span></span>' : `<button class="x" aria-label="Borrar" onclick="delPlan('${p.id}')">${ic('trash','sm')}</button>`}</div>`).join('')}
+    <p class="muted" style="margin:6px 0 12px">Cambiar un precio no modifica lo que ya paga cada cliente.</p>
+    <form onsubmit="addPlan(event)"><div class="grid2"><label>Nuevo plan<input id="np_n" required placeholder="Ej: 4 días por semana"></label><label>Precio semanal<input id="np_p" type="number" min="0" inputmode="numeric" required></label></div>
+      <button class="btn block ghost">${ic('plus','sm')}Agregar plan</button></form></div>
+  <div class="card"><div class="sec">${ic('leaf')}Dietas</div>
+    ${db.cat.dietas.map(d => `<div class="mov"><span class="dot in" style="background:rgba(var(--yr),.14);color:var(--y)">${ic('leaf','sm')}</span><div class="grow"><b>${esc(d.nombre)}</b></div>${d.id === 'nada' ? '' : `<button class="x" aria-label="Borrar" onclick="delDieta('${d.id}')">${ic('trash','sm')}</button>`}</div>`).join('')}
+    <form onsubmit="addDieta(event)" style="margin-top:12px"><label>Nueva dieta<input id="nd_n" required placeholder="Ej: Dieta de definición"></label>
+      <button class="btn block ghost">${ic('plus','sm')}Agregar dieta</button></form></div>
+  <div class="card"><div class="sec">${ic('bag')}Otros precios</div>
+    <p class="muted">Entrada al gym RD$50 · Zumba RD$50 adicionales · Compromiso mínimo: 12 semanas</p></div>`;
+}
+function setPlan(id,k,v){ db.cat.planes.find(p=>p.id===id)[k]=Number(v)||0; guardarDB(); }
+function addPlan(e){ e.preventDefault(); const p=Number($('#np_p').value); db.cat.planes.splice(db.cat.planes.length-2,0,{id:'p'+uid(), nombre:$('#np_n').value.trim(), precio:p, min:Math.round(p*.7), auto:true}); guardarDB(); route(); }
+function delPlan(id){ if(db.clientes.some(c=>c.plan===id)){alert('Hay clientes con este plan. Cámbialos de plan primero.');return;} if(!confirm('¿Borrar este plan?'))return; db.cat.planes=db.cat.planes.filter(p=>p.id!==id); guardarDB(); route(); }
+function addDieta(e){ e.preventDefault(); db.cat.dietas.splice(db.cat.dietas.length-1,0,{id:'d'+uid(), nombre:$('#nd_n').value.trim(), meta:''}); guardarDB(); route(); }
+function delDieta(id){ if(db.clientes.some(c=>c.dieta===id)){alert('Hay clientes con esta dieta. Cámbialos primero.');return;} if(!confirm('¿Borrar esta dieta?'))return; db.cat.dietas=db.cat.dietas.filter(d=>d.id!==id); guardarDB(); route(); }
+
+/* ================= ajustes ================= */
+function vistaAjustes(){
+  const demo = db.clientes.some(c => String(c.id).startsWith('demo'));
+  return topbar('Ajustes', '#/') + `
+  ${instalarCard()}
+  <a class="btn block" href="#/personalizar" style="margin-bottom:14px">${ic('palette','sm')}Editar app: color, brillo y letra</a>
+  <div class="card"><div class="sec">${ic('down')}Respaldo</div><p class="muted" style="margin-bottom:12px">Tus datos se guardan solo en este dispositivo. Exporta un respaldo de vez en cuando.</p>
+    <button class="btn block" onclick="exportar()">${ic('down','sm')}Exportar respaldo</button>
+    <label style="margin-top:14px">Importar respaldo<input type="file" accept="application/json" onchange="importar(this)"></label></div>
+  <div class="card"><div class="sec">${ic('users')}Ejemplos</div><p class="muted" style="margin-bottom:12px">Carga clientes de prueba para revisar cómo se ve la app, y quítalos cuando quieras.</p>
+    ${demo ? `<button class="btn block ghost" onclick="quitarDemo()">Quitar ejemplos</button>` : `<button class="btn block ghost" onclick="cargarDemo()">Cargar clientes de ejemplo</button>`}</div>
+  <div class="card"><div class="sec" style="color:var(--bad)">${ic('trash')}Zona de peligro</div>
+    <button class="btn block danger" onclick="borrarTodo()">Borrar todos los datos</button></div>`;
+}
+function exportar(){ const b=new Blob([JSON.stringify({...db, tema:T},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='respaldo-gym-'+hoy()+'.json'; a.click(); }
+function importar(el){ const f=el.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.clientes||!d.cat) throw 0; const tm=d.tema; delete d.tema; db=d; guardarDB(); if(tm){ T={...T0, ideas:[], ...tm}; guardarTema(); aplicarTema(); } route(); }catch(e){ alert('Archivo no válido'); } }; r.readAsText(f); }
+function borrarTodo(){ if(!confirm('¿Borrar TODOS los clientes y pagos? No se puede deshacer.'))return; db={clientes:[],cat:CAT0()}; guardarDB(); route(); }
+function quitarDemo(){ db.clientes=db.clientes.filter(c=>!String(c.id).startsWith('demo')); guardarDB(); route(); }
+function cargarDemo(){
+  const ago = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+  db.clientes.push(
+    {id:'demo1', nombre:'Ana Ejemplo', usuario:'8095550101', telefono:'8095550101', registro:ago(35), inicio:ago(35), meta:'grasa', plan:'p5', cuota:600, frecuencia:'semanal', dieta:'keto', dias:['L','M','X','J','V'], hora:'06:30', notaDieta:'Ayuno 16/8, ventana de 12:00 a 20:00', notaPlan:'Cuidar las rodillas en cardio', activo:true, cargos:[],
+      pagos:[0,1,2,3,4].map(i => ({id:'dp1'+i, fecha:ago(35 - i*7), monto:600, nota:'Semana'})),
+      medidas:[{id:'dm1', fecha:ago(35), peso:'237', cintura:'42'},{id:'dm2', fecha:ago(21), peso:'231', cintura:'41'},{id:'dm3', fecha:ago(7), peso:'226', cintura:'39.5'}]},
+    {id:'demo2', nombre:'Luis Ejemplo', usuario:'luis.ej', telefono:'8095550102', registro:ago(15), inicio:ago(15), meta:'masa', plan:'p3', cuota:500, frecuencia:'quincenal', dieta:'masa', dias:['L','X','V'], hora:'17:00', notaDieta:'Sin brócoli ni coliflor', notaPlan:'', activo:true, cargos:[],
+      pagos:[{id:'dp21', fecha:ago(15), monto:1000, nota:'Quincena'}], medidas:[{id:'dm4', fecha:ago(15), peso:'150', pecho:'36'},{id:'dm5', fecha:ago(1), peso:'152', pecho:'37'}]},
+    {id:'demo3', nombre:'Carmen Ejemplo', usuario:'8095550103', telefono:'8095550103', registro:ago(30), inicio:ago(30), meta:'tono', plan:'nada', cuota:0, frecuencia:'semanal', dieta:'nada', dias:[], hora:'', notaDieta:'', notaPlan:'', activo:true,
+      cargos:[{id:'dc1', fecha:ago(30), concepto:'Deuda anterior', monto:6000}], pagos:[{id:'dp31', fecha:ago(20), monto:3000, nota:'Abono'}], medidas:[]}
+  );
+  guardarDB(); route();
+}
+
+aplicarTema();
+route();
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
