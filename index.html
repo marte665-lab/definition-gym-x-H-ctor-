@@ -155,6 +155,12 @@ body.portal .wa{bottom:calc(24px + env(safe-area-inset-bottom))}
 .sw{background:var(--card2);border:2px solid transparent;border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text);font-weight:600;font-size:12px;font-family:inherit;cursor:pointer}
 .sw i{width:34px;height:34px;border-radius:50%;display:block}
 .sw.on{border-color:var(--y)}
+.sw.wide{grid-column:1/-1;flex-direction:row;justify-content:center;gap:12px;padding:12px}
+.dayrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.dayrow .dd{width:18px;height:18px;border-radius:50%;flex:none}
+.dayrow span{width:96px;font-weight:600;font-size:14px;flex:none}
+.dayrow select{margin-top:0;flex:1;padding:10px 38px 10px 12px;min-width:0}
+.dayrow.hoy span{color:var(--y)}
 .seg{display:flex;gap:6px}
 .seg button{flex:1;padding:12px 6px;border-radius:12px;background:var(--card2);border:1px solid var(--line);color:var(--text);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}
 .seg button.on{background:var(--y);color:var(--on);border-color:var(--y)}
@@ -336,14 +342,18 @@ function cuotaOpts(planId, cuota){
 const TKEY = 'hector-gym-tema';
 const ACENTOS = {
   oro:{n:'Dorado', h:43, s:58}, ambar:{n:'Ámbar', h:30, s:68}, mostaza:{n:'Mostaza', h:52, s:48},
-  esmeralda:{n:'Esmeralda', h:152, s:45}, rojo:{n:'Rojo', h:2, s:60}, azul:{n:'Azul', h:212, s:60}
+  esmeralda:{n:'Esmeralda', h:152, s:45}, rojo:{n:'Rojo', h:2, s:60}, azul:{n:'Azul', h:212, s:60},
+  turquesa:{n:'Turquesa', h:178, s:50}, morado:{n:'Morado', h:268, s:45}, rosa:{n:'Rosa', h:330, s:50}
 };
 const FONDOS = {
   negro:{n:'Negro', bg:'#0a0a0b', card:'#16161a', card2:'#1c1c21', line:'#26262c', tab:'rgba(18,18,21,.92)'},
   gris:{n:'Gris oscuro', bg:'#17181b', card:'#202227', card2:'#282b31', line:'#34373e', tab:'rgba(32,34,39,.94)'}
 };
 const LETRAS = {m:{n:'Normal', z:1}, g:{n:'Grande', z:1.12}, xg:{n:'Muy grande', z:1.25}};
-const T0 = {acento:'oro', brillo:48, fondo:'negro', letra:'m', negocio:'Héctor Tu Entrenador Personal', nombre:'Héctor'};
+const SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];   // 0 = domingo, como en JavaScript
+const COLOR_DIA = {0:'turquesa', 1:'oro', 2:'azul', 3:'esmeralda', 4:'morado', 5:'ambar', 6:'rosa'};
+const T0 = {acento:'oro', brillo:48, fondo:'negro', letra:'m', negocio:'Héctor Tu Entrenador Personal', nombre:'Héctor',
+  porDia:true, colorDia:COLOR_DIA, colorCliente:'dia'};
 let T = (() => {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(TKEY)) || {}; } catch(e) {}
@@ -357,12 +367,31 @@ function hsl2rgb(h, s, l){
   const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return [0, 8, 4].map(n => Math.round(f(n) * 255));
 }
+const colorDeDia = d => { const k = (T.colorDia || {})[d]; return ACENTOS[k] ? k : COLOR_DIA[d]; };
+function colorActivo(){
+  const portal = document.body.classList.contains('portal');
+  if (portal && ACENTOS[T.colorCliente]) return T.colorCliente;
+  if ((portal || T.porDia !== false)) return colorDeDia(new Date().getDay());
+  return ACENTOS[T.acento] ? T.acento : 'oro';
+}
+const rgbA = k => `rgb(${hsl2rgb(ACENTOS[k].h, ACENTOS[k].s, Number(T.brillo) || 48)})`;
+const conicDia = () => 'conic-gradient(' + [1,2,3,4,5,6,0].map((d, i) => `${rgbA(colorDeDia(d))} ${(i * 100 / 7).toFixed(2)}% ${((i + 1) * 100 / 7).toFixed(2)}%`).join(',') + ')';
+function pintarMuestras(){
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const i = el.tagName === 'I' ? el : el.querySelector('i'); if (!i) return;
+    const k = el.dataset.k;
+    i.style.background = k === 'dia' ? conicDia() : (ACENTOS[k] ? rgbA(k) : '');
+  });
+}
+// texto claro u oscuro sobre el color, según cuál se lea mejor
+const lumi = ([r,g,b]) => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+const sobreColor = rgb => { const L = lumi(rgb); return (L + .05) / .0565 >= 1.05 / (L + .05) ? '#17130a' : '#ffffff'; };
 function aplicarTema(){
-  const a = ACENTOS[T.acento] || ACENTOS.oro, f = FONDOS[T.fondo] || FONDOS.negro, L = Number(T.brillo) || 48;
+  const a = ACENTOS[colorActivo()], f = FONDOS[T.fondo] || FONDOS.negro, L = Number(T.brillo) || 48;
   const c1 = hsl2rgb(a.h, a.s, L), c2 = hsl2rgb(a.h, a.s, Math.max(L - 9, 20));
   const r = document.documentElement.style;
   r.setProperty('--y', `rgb(${c1})`); r.setProperty('--y2', `rgb(${c2})`); r.setProperty('--yr', c1.join(','));
-  r.setProperty('--on', L >= 44 ? '#17130a' : '#ffffff');
+  r.setProperty('--on', sobreColor(c1));
   r.setProperty('--bg', f.bg); r.setProperty('--card', f.card); r.setProperty('--card2', f.card2);
   r.setProperty('--line', f.line); r.setProperty('--tabbg', f.tab);
   const z = (LETRAS[T.letra] || LETRAS.m).z;
@@ -371,10 +400,11 @@ function aplicarTema(){
 }
 const conservarScroll = fn => { const y = window.scrollY; fn(); window.scrollTo(0, y); };
 function setTema(k, v){ T[k] = v; guardarTema(); aplicarTema(); conservarScroll(route); }
+function setDia(d, k){ T.colorDia = {...T.colorDia, [d]: k}; guardarTema(); aplicarTema(); conservarScroll(route); }
 function setBrillo(v){
   T.brillo = Number(v); guardarTema(); aplicarTema();
   const e = $('#brv'); if (e) e.textContent = v + '%';
-  document.querySelectorAll('.sw').forEach(b => { const a = ACENTOS[b.dataset.k]; b.querySelector('i').style.background = `rgb(${hsl2rgb(a.h, a.s, T.brillo)})`; });
+  pintarMuestras();
 }
 function setTexto(k, v){ T[k] = v; guardarTema(); }
 function resetTema(){
@@ -403,7 +433,13 @@ function vistaPersonalizar(){
     `<button type="button" class="${T[key] === k ? 'on' : ''}" onclick="setTema('${key}','${k}')">${o.n}</button>`).join('')}</div>`;
   return topbar('Editar app', '#/') + `
   <div class="card"><div class="sec">${ic('palette')}Color</div>
-    <div class="sws">${sw}</div>
+    <div class="seg" style="margin-bottom:14px">
+      <button type="button" class="${T.porDia === false ? 'on' : ''}" onclick="setTema('porDia', false)">Un solo color</button>
+      <button type="button" class="${T.porDia === false ? '' : 'on'}" onclick="setTema('porDia', true)">Cambia cada día</button></div>
+    ${T.porDia === false ? `<div class="sws">${sw}</div>` : `
+    <p class="muted" style="margin-bottom:4px">Hoy es <b style="color:var(--text)">${SEMANA[new Date().getDay()].toLowerCase()}</b>: la app se ve en <b style="color:var(--y)">${ACENTOS[colorDeDia(new Date().getDay())].n.toLowerCase()}</b>. Elige el color de cada día:</p>
+    ${[1,2,3,4,5,6,0].map(d => `<div class="dayrow ${d === new Date().getDay() ? 'hoy' : ''}"><i class="dd" data-k="${colorDeDia(d)}" style="background:${rgbA(colorDeDia(d))}"></i><span>${SEMANA[d]}</span>
+      <select aria-label="Color del ${SEMANA[d].toLowerCase()}" onchange="setDia(${d}, this.value)">${Object.entries(ACENTOS).map(([k, a]) => `<option value="${k}" ${colorDeDia(d) === k ? 'selected' : ''}>${a.n}</option>`).join('')}</select></div>`).join('')}`}
     <label style="margin-top:16px">Brillo del color <span id="brv" style="float:right;color:var(--text)">${T.brillo}%</span>
       <input type="range" min="34" max="62" value="${T.brillo}" oninput="setBrillo(this.value)"></label>
     <div class="between"><span>Más suave</span><span>Más brillante</span></div></div>
@@ -446,11 +482,13 @@ function route(){
   const map = {'':vistaHome, clientes:vistaLista, nuevo:()=>vistaForm(), cliente:()=>vistaFicha(b), editar:()=>vistaForm(find(b)),
     pagos:vistaPagos, horarios:vistaHorarios, planes:vistaPlanes, ajustes:vistaAjustes, portal:()=>vistaPortal(b), personalizar:vistaPersonalizar};
   document.body.classList.toggle('portal', a === 'portal');
+  aplicarTema();
   $('#app').innerHTML = (map[a] || vistaHome)();
   $('#tabbar').innerHTML = TABS.map(([r,i,l]) => `<a href="#/${r}" class="${r === a ? 'on' : ''}">${ic(i)}${l}</a>`).join('');
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange', route);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) aplicarTema(); });   // si pasó la medianoche, cambia el color del día
 const topbar = (t, back, extra = '') => `<div class="top"><a class="back" href="${back}">${ic('back')}</a><h2>${t}</h2>${extra}</div>`;
 const vacio = (i, t) => `<div class="empty">${ic(i)}<div>${t}</div></div>`;
 
@@ -655,6 +693,12 @@ function toggleActivo(id){
 function eliminar(id){ if(!confirm('¿Eliminar este cliente y todo su historial?'))return; db.clientes=db.clientes.filter(c=>c.id!==id); guardarDB(); location.hash='#/clientes'; }
 
 /* ================= portal del cliente ================= */
+const colorCard = () => `<div class="card"><div class="sec">${ic('palette')}Color de tu app</div>
+  <div class="sws">
+    <button type="button" class="sw wide ${T.colorCliente === 'dia' ? 'on' : ''}" data-k="dia" onclick="setTema('colorCliente','dia')"><i style="background:${conicDia()}"></i>Cambia cada día</button>
+    ${Object.entries(ACENTOS).map(([k, a]) => `<button type="button" class="sw ${T.colorCliente === k ? 'on' : ''}" data-k="${k}" onclick="setTema('colorCliente','${k}')"><i style="background:${rgbA(k)}"></i>${a.n}</button>`).join('')}
+  </div>
+  <p class="muted" style="margin-top:10px">Elige el que más te guste. Se guarda en este dispositivo.</p></div>`;
 function vistaPortal(id){
   const c = find(id); if (!c) return topbar('Cliente','#/clientes') + vacio('users','Cliente no encontrado.');
   const k = cuenta(c), pl = planDe(c), sem = semana(c), pc = proximoCobro(c);
@@ -676,7 +720,8 @@ function vistaPortal(id){
     <b>${esc(dietaDe(c).nombre)}</b>${c.notaDieta ? `<p class="muted" style="margin-top:6px">${esc(c.notaDieta)}</p>` : ''}</div>
 
   <div class="card"><div class="sec">${ic('chart')}Tu progreso</div>${grafica(c.medidas)}${cambioPeso(c.medidas)}</div>
-  <div class="card"><div class="sec">${ic('wallet')}Tus pagos</div>${movs(c, false)}</div>`;
+  <div class="card"><div class="sec">${ic('wallet')}Tus pagos</div>${movs(c, false)}</div>
+  ${colorCard()}`;
 }
 
 /* ================= pagos ================= */
