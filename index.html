@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://ewlddjwdusbdbdqduqzu.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Gestión de clientes de entrenamiento personal">
 <link rel="manifest" href="manifest.webmanifest">
@@ -279,7 +279,7 @@ function guardarDB(){
 /* ================= nube (Supabase propio) ================= */
 // Aquí van los datos de TU proyecto de Supabase. La llave "anon" es pública por diseño:
 // lo que protege los datos es el inicio de sesión y las reglas RLS (ver supabase/esquema.sql).
-const NUBE = {url:'', key:''};
+const NUBE = {url:'https://ewlddjwdusbdbdqduqzu.supabase.co', key:'sb_publishable_Htq74qQAaQs9W8DCkKjLCA_7c7dOlnw'};
 const hayNube = () => !!(NUBE.url && NUBE.key);
 const SKEY = 'hector-gym-sesion';
 let ses = (() => { try { return JSON.parse(localStorage.getItem(SKEY)); } catch(e){ return null; } })();
